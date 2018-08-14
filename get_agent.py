@@ -6,6 +6,7 @@ from agent import ReinforceAgent
 from agent import A2CAgent
 from agent import TRPOAgent
 from agent import PPOAgent
+from agent import A3CAgent
 
 from models import Policy
 from models import Value
@@ -20,7 +21,7 @@ def prepro(I):
     return I.astype(np.float)
 
 class StackFrame(gym.Wrapper):
-    def __init__(self, env=None, history_length=1):
+    def __init__(self, env=None, history_length=4):
         super(StackFrame, self).__init__(env)
         self.history_length = history_length
         self.buffer = None
@@ -38,49 +39,17 @@ class StackFrame(gym.Wrapper):
 
 def get_agent(args):
     
-    env = gym.make(args.env)
-    env = StackFrame(env,4)
-
-    policy = Policy(env.action_space.n)
-    optimizer = torch.optim.Adam(policy.parameters(), lr=args.rllr)
-
-    value = Value()
-    value_optimizer = torch.optim.Adam(value.parameters(), lr = args.rllr)
-
     if args.agent == "Reinforce":
-        return ReinforceAgent(env,
-            policy, optimizer,
-            args.episodes, args.gamma,
-            args.entropy_para, args.batch_size,
-            args.tau
-        )
+        return ReinforceAgent(args, StackFrame)
     
     if args.agent == "A2C":
-        return A2CAgent(env,
-            policy, optimizer,
-            value, value_optimizer,
-            args.episodes, args.gamma,
-            args.entropy_para, args.batch_size,
-            args.tau
-        )
+        return A2CAgent(args, StackFrame)
     
     if args.agent == "PPO":
-        return PPOAgent(env,
-            policy, optimizer,
-            value, value_optimizer,
-            args.update_time, args.clip_para,
-            args.episodes, args.gamma,
-            args.entropy_para, args.batch_size,
-            args.tau
-        )
+        return PPOAgent(args, StackFrame)
     
     if args.agent == "TRPO":
-        return TRPOAgent(env,
-            policy,
-            value, value_optimizer,
-            args.max_kl, args.cg_damping,
-            args.cg_iters, args.residual_tol,
-            args.episodes, args.gamma,
-            args.entropy_para, args.batch_size,
-            args.tau
-        )    
+        return TRPOAgent(args, StackFrame)    
+
+    if args.agent == "A3C":
+        return A3CAgent(args, StackFrame)

@@ -10,25 +10,16 @@ from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
 
 from .base_agent import BaseAgent
+from models import Policy
+from models import Value
 
 class ReinforceAgent(BaseAgent):
-    def __init__(self,
-                env,
-                policy,
-                policy_optimizer,
-                episodes,
-                gamma,
-                entropy_para,
-                batch_size,
-                tau
-                ):
-        super(ReinforceAgent,self).__init__(
-                env,
-                policy,       policy_optimizer,
-                episodes,     gamma,
-                entropy_para, batch_size,
-                tau)
-                
+    def __init__(self,args,env_wrapper):
+        super(ReinforceAgent,self).__init__(args,env_wrapper)
+
+        self.policy = Policy(self.env.action_space.n).to(device)
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=args.rllr)
+
         self.algo="reinforce"
 
 
