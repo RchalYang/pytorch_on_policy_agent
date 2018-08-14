@@ -12,29 +12,22 @@ import utils.math_utils as math_utils
 
 from .base_agent import BaseAgent
 
+from models import Policy
+from models import Value
+
 class A2CAgent(BaseAgent):
-    def __init__(self,
-                env,
-                policy,
-                policy_optimizer,
-                value,
-                value_optimizer,
-                episodes,
-                gamma,
-                entropy_para,
-                batch_size,
-                tau
-                ):
+    def __init__(self,args, env_wrapper):
 
+        super(A2CAgent,self).__init__(args, env_wrapper)
 
-        super(A2CAgent,self).__init__(env,
-                policy,    policy_optimizer,
-                episodes,  gamma,
-                entropy_para, batch_size,
-                tau)
+        self.policy = Policy(self.env.action_space.n)
+        self.policy.to(device)
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=args.rllr)
 
-        self.value        = value.to(device)
-        self.value_optimizer = value_optimizer
+        self.value = Value()
+        self.value.to(device)
+        self.value_optimizer = torch.optim.Adam(self.value.parameters(), lr = args.rllr)
+
         self.algo="a2c"
 
     def _optimize(self, observations, actions, discounted_rewards):

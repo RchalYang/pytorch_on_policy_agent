@@ -2,6 +2,8 @@ import collections
 import copy
 import numpy as np
 import os.path as osp
+from itertools import count
+import gym
 
 import torch
 from torch.distributions import Categorical
@@ -10,30 +12,22 @@ from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
 
 class BaseAgent:
-    def __init__(self,
-                env,
-                policy,
-                policy_optimizer,
-                episodes,
-                gamma,
-                entropy_para,
-                batch_size,
-                tau
-                ):
+    def __init__(self, args, env_wrapper):
 
-        self.env          = env
+        self.args = args
+        self.env_wrapper = env_wrapper
 
-        self.policy       = policy.to(device)
-        self.optimizer    = policy_optimizer
+        self.env          = env_wrapper(gym.make(args.env))
 
-        self.gamma        = gamma
-        self.episodes     = episodes
-        self.entropy_para = entropy_para
-        self.batch_size   = batch_size
-        self.tau          = tau
+        self.policy = None
+
+        self.gamma        = args.gamma
+        self.episodes     = args.episodes
+        self.entropy_para = args.entropy_para
+        self.batch_size   = args.batch_size
+        self.tau          = args.tau
 
         self.step_time = 0
-
         self.algo="base"
 
     def _soft_update_target(self, target, source):
@@ -107,7 +101,6 @@ class BaseAgent:
 
         return avg_rewards
 
-
     def load_model(self, prefix):
         policy_file_name="{}_policy_latest_model.pth".format(self.algo)
         policy_path=osp.join(prefix,policy_file_name)
@@ -117,3 +110,14 @@ class BaseAgent:
         policy_file_name="{}_policy_latest_model.pth".format(self.algo)
         policy_path=osp.join(prefix,policy_file_name)
         torch.save(self.policy.state_dict(), policy_path)
+
+    def train(self, model_store_sprefix, save_interval):
+        running_reward = None
+        for t in count():
+            reward = self.step()
+            running_reward = 0.9*running_reward + 0.1*reward if running_reward is not None else reward
+        
+            print("Episode:{}, running_Reward:{}".format(t,running_reward))
+            print("Reward:{}".format(reward))
+            if t % save_interval == 0:
+                self.snapshot(model_store_sprefix)

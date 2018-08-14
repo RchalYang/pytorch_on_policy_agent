@@ -10,33 +10,17 @@ import utils.math_utils as math_utils
 from .a2c_agent import A2CAgent
 
 class TRPOAgent(A2CAgent):
-    def __init__(self,env,
-                    policy,
-                    value, value_optimizer,
-                    max_kl,
-                    cg_damping,
-                    cg_iters,
-                    residual_tol,
-                    episodes,
-                    gamma,
-                    entropy_para,
-                    batch_size,
-                    tau
-                ):
+    def __init__(self,args,env_wrapper):
         """
         Instantiate a TRPO agent
         """
-        super(TRPOAgent, self).__init__(env,
-                                        policy,       None,
-                                        value,        value_optimizer,
-                                        episodes,     gamma,
-                                        entropy_para, batch_size,
-                                        tau)
+        super(TRPOAgent, self).__init__(args,env_wrapper)
                                         
-        self.max_kl = max_kl
-        self.cg_damping = cg_damping
-        self.cg_iters = cg_iters
-        self.residual_tol = residual_tol
+        self.max_kl = args.max_kl
+        self.cg_damping = args.cg_damping
+        self.cg_iters = args.cg_iters
+        self.residual_tol = args.residual_tol
+
         self.algo="trpo"
 
     def mean_kl_divergence(self, model):

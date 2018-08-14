@@ -5,6 +5,7 @@ def get_args():
 	#
 	parser.add_argument('--save_interval',help='save model interval',           type=int,   default=200)
 	parser.add_argument('--resume', action="store_true", default=False)
+	parser.add_argument("--max_iter", help="max iteration for algorithems", type=int, default=5000 )
 	#Agent
 	parser.add_argument('--agent',        help='agent name',                    default='PPO')
 	#Universal Setting
@@ -23,6 +24,8 @@ def get_args():
 	#PPO
 	parser.add_argument("--update_time", help = "update num for ppo", type = int, default=5 )
 	parser.add_argument("--clip_para",   help = "clip_para for ppo", type = float, default=0.2 )
+	#A3C
+	parser.add_argument("--num_workers", help = "num of workers for a3c", type = int, default=4 )
 
 	args = parser.parse_args()
 	return args
