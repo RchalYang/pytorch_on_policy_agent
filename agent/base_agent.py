@@ -4,6 +4,7 @@ import numpy as np
 import os.path as osp
 from itertools import count
 import gym
+import logging
 
 import torch
 from torch.distributions import Categorical
@@ -112,6 +113,9 @@ class BaseAgent:
         torch.save(self.policy.state_dict(), policy_path)
 
     def train(self, model_store_sprefix, save_interval):
+
+        logging.info(self.algo)
+
         running_reward = None
         for t in count():
             reward = self.step()
