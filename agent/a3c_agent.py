@@ -19,8 +19,6 @@ from .base_agent import BaseAgent
 from models import Policy
 from models import Value
 
-
-
 def sync_grad(model, shared_model):
     for param, shared_param in zip(model.parameters(), shared_model.parameters()):
         if shared_param.grad is not None:
@@ -40,9 +38,9 @@ class A3CAgent(BaseAgent):
 
     def _optimize(self, observations, actions, discounted_rewards):
         
-        observations = Tensor(observations)
-        actions = Tensor(actions).long()
-        discounted_rewards = Tensor(discounted_rewards).unsqueeze(1)
+        observations = torch.Tensor(observations)
+        actions = torch.Tensor(actions).long()
+        discounted_rewards = torch.Tensor(discounted_rewards).unsqueeze(1)
 
         dis = self.policy(observations)
         dis = Categorical(dis)
@@ -62,8 +60,7 @@ class A3CAgent(BaseAgent):
 
         actor_loss = actor_loss.mean() - self.entropy_para * mean_entropy
         
-        actor_loss.backward()
-        value_loss.backward()
+        return actor_loss, value_loss
         
     def step(self):
 
@@ -72,7 +69,10 @@ class A3CAgent(BaseAgent):
         total_num = len(actions)
         batch_num = (total_num // self.batch_size) if (total_num % self.batch_size == 0) \
             else  (total_num // self.batch_size + 1)
-            
+        
+        actor_loss = None
+        value_loss = None
+
         for i in range(batch_num):
             batch_start = i     * self.batch_size
             batch_end   = (i+1) * self.batch_size
@@ -81,11 +81,17 @@ class A3CAgent(BaseAgent):
             batch_actions            = actions[batch_start : batch_end]
             batch_discounted_rewards = discounted_rewards[batch_start: batch_end]
 
-            self._optimize(batch_observations, batch_actions, batch_discounted_rewards)
+            batch_actor_loss, batch_value_loss = self._optimize(batch_observations,
+                                            batch_actions, batch_discounted_rewards)
+            
+            actor_loss = actor_loss + batch_actor_loss if actor_loss is not None \
+                        else batch_actor_loss
+            value_loss = value_loss + batch_value_loss if value_loss is not None \
+                        else batch_value_loss
         
         self.step_time += 1
 
-        return avg_rewards
+        return avg_rewards, actor_loss, value_loss
 
     def load_model(self, prefix):
         policy_file_name="{}_policy_latest_model.pth".format(self.algo)
@@ -111,10 +117,6 @@ class A3CAgent(BaseAgent):
         current_agent = A3CAgent(args, env_wrapper)
         
         logging.info("Worker {} agent created".format(rank))
-        current_agent.policy.to(device)
-        current_agent.value.to(device)
-
-        logging.info("Worker {} model to device".format(rank))
 
         optimizer = torch.optim.Adam(shared_model_actor.parameters(), lr=args.rllr)
         value_optimizer = torch.optim.Adam(shared_model_critic.parameters(), lr = args.rllr)
@@ -126,33 +128,30 @@ class A3CAgent(BaseAgent):
             current_agent.policy.load_state_dict(shared_model_actor.state_dict())
             current_agent.value.load_state_dict(shared_model_critic.state_dict())
 
-            logging.info("Worker {} agent synced model".format(rank))
-
-            reward = current_agent.step()
+            reward, actor_loss, value_loss = current_agent.step()
             
-            logging.info("Worker {} generated data".format(rank))
-
             optimizer.zero_grad()
             value_optimizer.zero_grad()
-            logging.info("Worker {} zeroed grad".format(rank))
+
+            actor_loss.backward()
+            value_loss.backward()
 
             sync_grad( current_agent.policy , shared_model_actor )
             sync_grad( current_agent.value  , shared_model_critic )
             
-            logging.info("Worker {} synced grad".format(rank))
-
             optimizer.step()
             value_optimizer.step()
 
             running_reward = 0.9*running_reward + 0.1*reward if running_reward is not None else reward
-        
-            logging.info("Process:{}, Episode:{}, running_Reward:{}".format(rank, i,running_reward))
-            logging.info("Process:{}, Reward:{}".format(rank, reward))
-
+   
             with lock:
+                temp_counter = counter.value
                 if counter.value % args.save_interval == 0:
                     current_agent.snapshot(model_store_sprefix)
                 counter.value += 1
+
+            logging.info("Process:{}, Episode:{}, running_Reward:{}".format( rank, temp_counter, running_reward))
+            logging.info("Process:{}, Reward:{}".format(rank, reward))
 
 
     def train(self, model_store_sprefix, save_interval):

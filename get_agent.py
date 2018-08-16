@@ -11,6 +11,8 @@ from agent import A3CAgent
 from models import Policy
 from models import Value
 
+import utils.torch_utils
+
 def prepro(I):
     """ prepro 210x160x3 into 6400 """
     I = I[35:195]
@@ -52,4 +54,5 @@ def get_agent(args):
         return TRPOAgent(args, StackFrame)    
 
     if args.agent == "A3C":
+        utils.torch_utils.device = "cpu"
         return A3CAgent(args, StackFrame)

@@ -5,13 +5,16 @@
 * Actor-Critic
 * TRPO
 * PPO
+* A3C
 
 P.S: Currently support discrete action space
 
 ## TODO:
-* A3C
+1. Add More Algorithm
 * Soft-actor-critic
 * DDPG
+* ...
+2. Add continuous support
 
 ## Basic Usage
 ```python
