@@ -5,7 +5,7 @@ class Memory():
     def __init__(self, params):
         self.obs = []
         self.acts = []
-        self.advantages = []
+        self.advs = []
         self.est_rs = []
 
         self.batch_size = params.batch_size
@@ -13,13 +13,19 @@ class Memory():
 
     def one_iteration():
         
-        self.obs = np
+        self.obs  = np.array( self.obs  )
+        self.acts = np.array( self.acts )
+        self.advs = np.array( self.advs )
 
         total_len = len( self.obs )
-        batch_num = math.ceil( total_len / self.batch_size )
+        # batch_num = math.ceil( total_len / self.batch_size )
 
-        idx = np.arange( total_len )
-        idx = np.shuffle( idx )
+        idx = np.random.permutation( total_len )
 
-        for i in range( batch_num ):
+        pos = 0
+        while pos < total_len:
+            yield self.obs[idx[ pos : pos + self.batch_size ]], \
+                self.acts[idx[ pos : pos + self.batch_size ]], \
+                self.advs[idx[ pos : pos + self.batch_size ]], \
+                self.est_rs[idx[ pos : pos + self.batch_size ]]
 

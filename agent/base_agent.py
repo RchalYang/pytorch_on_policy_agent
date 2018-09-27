@@ -13,15 +13,18 @@ from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
 
 class BaseAgent:
-    def __init__(self, args, env_wrapper, continuous):
+    def __init__(self, args, model, env, data_generator, memory, continuous):
 
         self.args = args
         self.env_wrapper = env_wrapper
 
         # self.env          = env_wrapper(gym.make(args.env))
-        self.env          = gym.make(args.env)
+        self.env          = env
 
-        self.policy = None
+        self.model = model
+
+        self.data_generator = data_generator
+        self.memory = memory
 
         self.gamma        = args.gamma
         self.episodes     = args.episodes

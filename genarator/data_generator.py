@@ -29,13 +29,21 @@ class Generator:
     def generate_data(self):
 
         current_timesteps = 0
+        ave_epi_rew = 0
+        epis = 0
         while current_timesteps < self.time_steps:
             obs, acts, advs, est_rs, epi_rew, epi_timesteps = self.generate_one_episode()
             self.memory.obs.extend( obs )
             self.memory.acts.extend( acts )
             self.memory.advs.extend( advs )
             self.memory.est_rs.extend( ests )
+
+            ave_epi_rew = epi_rew / (epis+1) + ave_epi_rew * epis / ( epis + 1 )
+
             current_timesteps += epi_timesteps
+            epis += 1
+        
+        return ave_epi_rew
     
     def _generalized_advantage_estimation(self, rewards, values, last_value):
         """
@@ -69,4 +77,4 @@ class Generator:
             advantages.insert( 0, R - values[t] )
             estimate_returns.insert( 0, R )
 
-	    return advantages, estimate_returns
+        return advantages, estimate_returns
