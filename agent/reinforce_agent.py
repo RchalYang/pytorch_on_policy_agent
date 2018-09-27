@@ -14,8 +14,8 @@ from models import Policy
 from models import Value
 
 class ReinforceAgent(BaseAgent):
-    def __init__(self,args,env_wrapper):
-        super(ReinforceAgent,self).__init__(args,env_wrapper)
+    def __init__(self,args,env_wrapper, continuous):
+        super(ReinforceAgent,self).__init__(args,env_wrapper, continuous)
 
         self.policy = Policy(self.env.action_space.n).to(device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=args.rllr)

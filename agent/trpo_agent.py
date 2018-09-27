@@ -10,11 +10,11 @@ import utils.math_utils as math_utils
 from .a2c_agent import A2CAgent
 
 class TRPOAgent(A2CAgent):
-    def __init__(self,args,env_wrapper):
+    def __init__(self,args,env_wrapper, continuous):
         """
         Instantiate a TRPO agent
         """
-        super(TRPOAgent, self).__init__(args,env_wrapper)
+        super(TRPOAgent, self).__init__(args,env_wrapper, continuous)
                                         
         self.max_kl = args.max_kl
         self.cg_damping = args.cg_damping

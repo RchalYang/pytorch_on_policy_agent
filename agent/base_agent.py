@@ -13,12 +13,13 @@ from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
 
 class BaseAgent:
-    def __init__(self, args, env_wrapper):
+    def __init__(self, args, env_wrapper, continuous):
 
         self.args = args
         self.env_wrapper = env_wrapper
 
-        self.env          = env_wrapper(gym.make(args.env))
+        # self.env          = env_wrapper(gym.make(args.env))
+        self.env          = gym.make(args.env)
 
         self.policy = None
 
@@ -27,6 +28,8 @@ class BaseAgent:
         self.entropy_para = args.entropy_para
         self.batch_size   = args.batch_size
         self.tau          = args.tau
+
+        self.continuous = continuous
 
         self.step_time = 0
         self.algo="base"

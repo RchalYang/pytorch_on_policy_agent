@@ -48,7 +48,7 @@ def get_agent(args):
         return A2CAgent(args, StackFrame)
     
     if args.agent == "PPO":
-        return PPOAgent(args, StackFrame)
+        return PPOAgent(args, StackFrame, False)
     
     if args.agent == "TRPO":
         return TRPOAgent(args, StackFrame)    

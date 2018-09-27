@@ -3,9 +3,10 @@ import argparse
 def get_args():
 	parser = argparse.ArgumentParser( formatter_class=argparse.ArgumentDefaultsHelpFormatter )
 	#
-	parser.add_argument('--save_interval',help='save model interval',           type=int,   default=200)
-	parser.add_argument('--resume', action="store_true", default=False)
-	parser.add_argument("--max_iter", help="max iteration for algorithems", type=int, default=5000 )
+	parser.add_argument('--save_interval',help="save model interval",           type=int,   default=200)
+	parser.add_argument('--resume',       help="whether to resume",             action="store_true", default=False)
+	parser.add_argument('--share_para',   help="whether to share param",        type=bool, default=True)
+	parser.add_argument("--max_iter",     help="max iteration for algorithems", type=int, default=5000 )
 	#Agent
 	parser.add_argument('--agent',        help='agent name',                    default='PPO')
 	#Universal Setting

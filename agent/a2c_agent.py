@@ -14,19 +14,28 @@ from .base_agent import BaseAgent
 
 from models import Policy
 from models import Value
+from models import MLPContinuousActorCritic
 
 class A2CAgent(BaseAgent):
-    def __init__(self,args, env_wrapper):
+    def __init__(self,args, env_wrapper, continuous):
 
-        super(A2CAgent,self).__init__(args, env_wrapper)
+        super(A2CAgent,self).__init__(args, env_wrapper, continuous)
 
-        self.policy = Policy(self.env.action_space.n)
-        self.policy.to(device)
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=args.rllr)
+        self.share_para = args.share_para
 
-        self.value = Value()
-        self.value.to(device)
-        self.value_optimizer = torch.optim.Adam(self.value.parameters(), lr = args.rllr)
+        # if not self.share_para:
+        #     self.policy = Policy(self.env.action_space.n)
+        #     self.policy.to(device)
+        #     self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=args.rllr)
+
+        #     self.value = Value()
+        #     self.value.to(device)
+        #     self.value_optimizer = torch.optim.Adam(self.value.parameters(), lr = args.rllr)
+        # else:
+
+        input_dim = self.env.observation_space.shape[0]
+        output_dim = self.env.action_space.n    
+        self.network = MLPContinuousActorCritic(input_dim, output_dim)
 
         self.algo="a2c"
 

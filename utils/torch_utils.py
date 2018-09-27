@@ -7,3 +7,5 @@ def Tensor(nparray):
 
 def Tensor_zeros_like(target):
     return torch.zeros_like(target).to(device)
+
+# def 

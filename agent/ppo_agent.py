@@ -14,13 +14,15 @@ import utils.math_utils as math_utils
 from .a2c_agent import A2CAgent
 
 class PPOAgent(A2CAgent):
-    def __init__(self,args, env_wrapper):
+    def __init__(self,args, env_wrapper, continuous):
 
-        super(PPOAgent,self).__init__(args, env_wrapper)
+        super(PPOAgent,self).__init__(args, env_wrapper, continuous)
+
+        if not self.share_para:
+            self.policy_old   = copy.deepcopy(self.policy)
+            self.policy_old.to(device)
         
-        self.policy_old   = copy.deepcopy(self.policy)
-        self.policy_old.to(device)
-        
+
         self.update_time  = args.update_time
         self.clip_para    = args.clip_para
         self.algo="ppo"

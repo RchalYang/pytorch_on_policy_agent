@@ -27,9 +27,9 @@ def sync_grad(model, shared_model):
 
 
 class A3CAgent(BaseAgent):
-    def __init__(self,args, env_wrapper):
+    def __init__(self,args, env_wrapper, continuous):
 
-        super(A3CAgent,self).__init__(args, env_wrapper)
+        super(A3CAgent,self).__init__(args, env_wrapper, continuous)
 
         self.policy = Policy(self.env.action_space.n)
         self.value = Value()
