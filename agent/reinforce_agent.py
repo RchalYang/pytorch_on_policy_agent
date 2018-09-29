@@ -10,8 +10,6 @@ from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
 
 from .base_agent import BaseAgent
-from models import Policy
-from models import Value
 
 class ReinforceAgent(BaseAgent):
 

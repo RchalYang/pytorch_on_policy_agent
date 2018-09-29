@@ -8,8 +8,6 @@ from agent import TRPOAgent
 from agent import PPOAgent
 from agent import A3CAgent
 
-from models import Policy
-from models import Value
 
 import utils.torch_utils
 

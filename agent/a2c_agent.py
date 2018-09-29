@@ -13,8 +13,6 @@ import utils.math_utils as math_utils
 from .base_agent import BaseAgent
 from .reinforce_agent import ReinforceAgent
 
-from models import Policy
-from models import Value
 from models import MLPContinuousActorCritic
 
 class A2CAgent(ReinforceAgent):

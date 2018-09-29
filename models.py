@@ -90,7 +90,7 @@ class ConvDiscreteActorCritic(nn.Module):
 		input_shape = env.observation_space.shape
 		output_size = env.action_space.n
 
-		self.conv1 = nn.Conv2d(history_len, 16, kernel_size=8, stride=4)
+		self.conv1 = nn.Conv2d( input_shape[2], 16, kernel_size=8, stride=4)
 		self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
 
 		conv_info = [
@@ -115,12 +115,56 @@ class ConvDiscreteActorCritic(nn.Module):
 		out = out.view(out.size(0), -1)
 
 		action = F.relu(self.fc_action(out))
-		action = F.softmax(self.action(action))
+		action = self.action(action)
 
 		value = F.relu(self.fc_value(out))
 		value = self.value(value)
 
 		return action, value
+
+
+class ConvContinuousActorCritic(nn.Module):
+	def __init__(self, env, hidden=256):
+		super(ConvDiscreteActorCritic, self).__init__()
+
+		input_shape = env.observation_space.shape
+		output_size = env.action_space.shape[0]
+
+		self.conv1 = nn.Conv2d( input_shape[2], 16, kernel_size=8, stride=4)
+		self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
+
+		conv_info = [
+			((0,0),(0,0),(8,8),(4,4)),
+			((0,0),(0,0),(4,4),(2,2)),
+		]
+
+		feature_map_shape = calc_feature_map_shape(input_shape, conv_info)
+		
+		dim_for_fc = feature_map_shape[0] * feature_map_shape[1] * 32
+
+		self.fc_action = nn.Linear(dim_for_fc, hidden)
+		self.action = nn.Linear(hidden, output_size)
+
+		self.fc_value = nn.Linear(dim_for_fc, hidden)
+		self.value = nn.Linear(hidden, 1)
+		
+		self.log_std = nn.Parameter(torch.zeros(1, output_size))
+
+	def forward(self, x):
+		out = F.relu((self.conv1(x)))
+		out = F.relu(self.conv2(out))
+
+		out = out.view(out.size(0), -1)
+
+		action = F.relu(self.fc_action(out))
+		action = self.action(action)
+
+		std = torch.exp(self.log_std)
+
+		value = F.relu(self.fc_value(out))
+		value = self.value(value)
+
+		return action, std, value
 
 class TestConv(nn.Module):
 	def __init__(self, output_size):
@@ -138,40 +182,7 @@ class TestConv(nn.Module):
 		out = F.relu((self.conv1(x)))
 		out = F.relu(self.conv2(out))
 		out = F.relu(self.fc(out.view(out.size(0), -1)))
-		probs = self.softmax(self.head(out))
+		# probs = self.softmax(self.head(out))
+		probs = self.head(out)
 		value = self.value(out)
 		return probs, value
-
-class Policy(nn.Module):
-	def __init__(self, output_size):
-		super(Policy, self).__init__()
-
-		self.conv1 = nn.Conv2d(4, 16, kernel_size=8, stride=4)
-		self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
-		self.fc = nn.Linear(2048, 256)
-		self.head = nn.Linear(256, output_size)
-		self.softmax = nn.Softmax(dim=-1)
-
-	def forward(self, x):
-		out = F.relu((self.conv1(x)))
-		out = F.relu(self.conv2(out))
-		out = F.relu(self.fc(out.view(out.size(0), -1)))
-		out = self.softmax(self.head(out))
-		return out
-
-class Value(nn.Module):
-	def __init__(self):
-		super(Value, self).__init__()
-
-		self.conv1 = nn.Conv2d(4, 16, kernel_size=8, stride=4)
-		self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
-		self.fc = nn.Linear(2048, 256)
-		self.head = nn.Linear(256, 1)
-
-	def forward(self, x):
-		out = F.relu((self.conv1(x)))
-		out = F.relu(self.conv2(out))
-		out = F.relu(self.fc(out.view(out.size(0), -1)))
-		out = self.head(out)
-		return out
-

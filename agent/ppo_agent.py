@@ -47,29 +47,33 @@ class PPOAgent(A2CAgent):
             log_prob_old = dis_old.log_prob( acts ).sum( -1, keepdim=True )
 
             ent = dis.entropy().sum( -1, keepdim=True )
-            
+
+            ratio = torch.exp(log_prob - log_prob_old)            
+
         else:
 
             probs, values = self.model(obs)
             with torch.no_grad():
                 probs_old, _ = self.model_old(obs)
 
+            dis = F.softmax( probs, dim = 1 )
+            dis_old = F.softmax(probs_old, dim = 1 )
 
-            probs = F.softmax(probs, dim = 1)
+            acts = acts.long()
 
-            probs_old = F.softmax(probs_old, dim = 1)
-            
-            dis = Categorical( probs )
-            dis_old = Categorical( probs_old )
+            probs = dis.gather( 1, acts )
+            probs_old = dis_old.gather( 1, acts )
 
-            acts = acts.squeeze(1).long()
+            # dis = Categorical( probs )
+            # dis_old = Categorical( probs_old )
+            ratio = probs / ( probs_old + 1e-8 )            
 
-            log_prob     = dis.log_prob( acts ).unsqueeze(1)
-            log_prob_old = dis_old.log_prob( acts ).unsqueeze(1)
+            # log_prob     = dis.log_prob( acts ).unsqueeze(1)
+            # log_prob_old = dis_old.log_prob( acts ).unsqueeze(1)
 
-            ent = dis.entropy()
+            ent = -( dis.log() * dis ).sum(-1)
 
-        ratio = torch.exp(log_prob - log_prob_old)
+
         # Normalize the advantage
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
         surrogate_loss_pre_clip = ratio * advs
@@ -81,8 +85,8 @@ class PPOAgent(A2CAgent):
 
         policy_loss = surrogate_loss - self.entropy_para * ent.mean()
 
-        criterion = nn.MSELoss( )
-        critic_loss = criterion(values, est_rs )
+        criterion = nn.MSELoss()
+        critic_loss = criterion( values, est_rs )
         print("Critic Loss:{}".format(critic_loss.item()))
 
         loss = policy_loss + self.value_loss_coeff * critic_loss

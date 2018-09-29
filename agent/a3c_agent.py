@@ -16,8 +16,6 @@ from utils.torch_utils import Tensor
 import utils.math_utils as math_utils
 
 from .base_agent import BaseAgent
-from models import Policy
-from models import Value
 
 def sync_grad(model, shared_model):
     for param, shared_param in zip(model.parameters(), shared_model.parameters()):
