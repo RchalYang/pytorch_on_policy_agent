@@ -55,8 +55,9 @@ class PPOAgent(A2CAgent):
                 probs_old, _ = self.model_old(obs)
 
 
-            probs = F.softmax(probs)
-            probs_old = F.softmax(probs_old)
+            probs = F.softmax(probs, dim = 1)
+
+            probs_old = F.softmax(probs_old, dim = 1)
             
             dis = Categorical( probs )
             dis_old = Categorical( probs_old )
@@ -71,7 +72,6 @@ class PPOAgent(A2CAgent):
         ratio = torch.exp(log_prob - log_prob_old)
         # Normalize the advantage
         advs = (advs - advs.mean()) / (advs.std() + 1e-8)
-        
         surrogate_loss_pre_clip = ratio * advs
         surrogate_loss_clip = torch.clamp(ratio, 
                         1.0 - self.clip_para,
@@ -81,7 +81,7 @@ class PPOAgent(A2CAgent):
 
         policy_loss = surrogate_loss - self.entropy_para * ent.mean()
 
-        criterion = nn.MSELoss( reduce=True)
+        criterion = nn.MSELoss( )
         critic_loss = criterion(values, est_rs )
         print("Critic Loss:{}".format(critic_loss.item()))
 

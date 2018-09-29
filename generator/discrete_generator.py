@@ -32,15 +32,14 @@ class DiscreteGenerator(Generator):
                 observation_tensor = Tensor(observation).unsqueeze(0)
                 probs, value = model(observation_tensor)
 
-            probs = F.softmax(probs)
-            # print(probs)
+            probs = F.softmax(probs, dim = 1)
             act_dis = Categorical(probs)
             action = act_dis.sample()
             action = action.cpu().numpy()
             actions.append(action)
             
-            observation, reward, done, _ = env.step(action)
-            # print(reward)
+            observation, reward, done, _ = env.step(action[0])
+            
             values.append(value.item())
             rewards.append(reward)
             total_reward += reward
@@ -53,9 +52,9 @@ class DiscreteGenerator(Generator):
         if not done:
             observation_tensor = Tensor(observation).unsqueeze(0)
             with torch.no_grad():
-                _, _, last_value = model( observation_tensor )
+                _, last_value = model( observation_tensor )
             last_value = last_value.item()
 
         advantages, estimate_returens = self.reward_processor(  rewards, values, last_value  )
-
+        
         return observations, actions, advantages, estimate_returens, total_reward, current_time_step

@@ -6,24 +6,29 @@ import cv2
 
 
 class NormalizedEnv(gym.ObservationWrapper):
-    def __init__(self, env=None):
-        super(NormalizedEnv, self).__init__(env)
-        self.state_mean = 0
-        self.state_std = 0
-        self.alpha = 0.9999
-        self.num_steps = 0
+	def __init__(self, env=None):
+		super(NormalizedEnv, self).__init__(env)
+		self.mean = np.zeros(self.observation_space.shape)
+		self.var = np.ones(self.observation_space.shape)
+		# self.alpha = 0.9999
+		self.num_steps = 0
 
-    def _observation(self, observation):
-        self.num_steps += 1
-        self.state_mean = self.state_mean * self.alpha + \
-            observation.mean() * (1 - self.alpha)
-        self.state_std = self.state_std * self.alpha + \
-            observation.std() * (1 - self.alpha)
+	def _observation(self, observation):
 
-        unbiased_mean = self.state_mean / (1 - pow(self.alpha, self.num_steps))
-        unbiased_std = self.state_std / (1 - pow(self.alpha, self.num_steps))
+		self._update_mean_std(observation)
+		
+		return (observation - self.mean) / ( np.sqrt(self.var ) + 1e-8)
 
-        return (observation - unbiased_mean) / (unbiased_std + 1e-8)
+	def _update_mean_std(self, ob):
+		delta = ob - self.mean
+		self.num_steps += 1
+		self.mean = self.mean + delta / self.num_steps
+
+		m_a = self.var * self.num_steps
+		m_b = np.square(delta)
+		M2 = m_a + m_b + np.square(delta) * (self.num_steps - 1) / self.num_steps
+		self.var = M2 / self.num_steps
+
 
 class NoopResetEnv(gym.Wrapper):
 	def __init__(self, env, noop_max=30):

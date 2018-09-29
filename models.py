@@ -69,10 +69,9 @@ class MLPDiscreteActorCritic(nn.Module):
 		
 		for name, para in self.named_parameters():
 			if "weight" in name:
-				nn.init.kaiming_normal_( para , nonlinearity='relu')
+				nn.init.normal_( para )
 			else:
 				para.data.fill_( 0 )
-
 
 	def forward(self, input_data):
 		out = F.relu(self.fc_1(input_data))

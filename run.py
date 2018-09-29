@@ -19,6 +19,7 @@ from generator import DiscreteGenerator
 from memory import Memory
 
 from agent import PPOAgent
+from utils.wrapper import *
 
 format = "%(asctime)s %(threadName)s %(levelname)s: %(message)s"
 log_formatter = logging.Formatter(format)
@@ -28,8 +29,8 @@ def main(args):
 
     model_store_sprefix = "snapshot"
     
-    env = gym.make(args.env)
-
+    env = NormalizedEnv(gym.make(args.env))
+# NormalizedEnv
     # model = MLPContinuousActorCritic(env)
     
     model = MLPDiscreteActorCritic(env)
