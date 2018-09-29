@@ -11,22 +11,20 @@ from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
 
 from .base_agent import BaseAgent
+from .reinforce_agent import ReinforceAgent
 
 from models import Policy
 from models import Value
 from models import MLPContinuousActorCritic
 
-class A2CAgent(BaseAgent):
-    def __init__(self,args, model, env, data_generator, memory, continuous):
+class A2CAgent(ReinforceAgent):
 
-        super(A2CAgent,self).__init__(args, model, env, data_generator, memory, continuous)
+    def __init__(self, args, model, optim, env, data_generator, memory, continuous):
 
-        # input_dim = self.env.observation_space.shape[0]
-        # output_dim = self.env.action_space.n    
-        # self.network = MLPContinuousActorCritic(input_dim, output_dim)
+        super(A2CAgent,self).__init__(args, model, optim, env, data_generator, memory, continuous)
 
         self.model_old = copy.deepcopy(self.model)
-
+        self.value_loss_coeff = args.value_loss_coeff
         self.algo="a2c"
 
     def _optimize(self, observations, actions, discounted_rewards):
@@ -61,18 +59,18 @@ class A2CAgent(BaseAgent):
         self.optimizer.step()
         self.value_optimizer.step()
 
-    def load_model(self, prefix):
-        policy_file_name="{}_policy_latest_model.pth".format(self.algo)
-        value_file_name="{}_value_latest_model.pth".format(self.algo)
-        policy_path=osp.join(prefix,policy_file_name)
-        value_path =osp.join(prefix,value_file_name)
-        self.policy.load_state_dict(torch.load(policy_path))
-        self.value.load_state_dict(torch.load(value_path))
+    # def load_model(self, prefix):
+    #     policy_file_name="{}_policy_latest_model.pth".format(self.algo)
+    #     value_file_name="{}_value_latest_model.pth".format(self.algo)
+    #     policy_path=osp.join(prefix,policy_file_name)
+    #     value_path =osp.join(prefix,value_file_name)
+    #     self.policy.load_state_dict(torch.load(policy_path))
+    #     self.value.load_state_dict(torch.load(value_path))
 
-    def snapshot(self, prefix):
-        policy_file_name="{}_policy_latest_model.pth".format(self.algo)
-        value_file_name="{}_value_latest_model.pth".format(self.algo)
-        policy_path=osp.join(prefix,policy_file_name)
-        value_path =osp.join(prefix,value_file_name)
-        torch.save(self.policy.state_dict(), policy_path)
-        torch.save(self.policy.state_dict(), value_path)
+    # def snapshot(self, prefix):
+    #     policy_file_name="{}_policy_latest_model.pth".format(self.algo)
+    #     value_file_name="{}_value_latest_model.pth".format(self.algo)
+    #     policy_path=osp.join(prefix,policy_file_name)
+    #     value_path =osp.join(prefix,value_file_name)
+    #     torch.save(self.policy.state_dict(), policy_path)
+    #     torch.save(self.policy.state_dict(), value_path)

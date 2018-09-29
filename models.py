@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from utils.torch_utils import Tensor
 
 def calc_feature_map_shape(input_shape, conv_info):
 	"""
@@ -15,9 +15,15 @@ def calc_feature_map_shape(input_shape, conv_info):
 	return (h,w)
 
 class MLPContinuousActorCritic(nn.Module):
-	def __init__(self, input_size, output_size, hidden=256):
+	def __init__(self, env,  hidden=256):
 
 		super().__init__()
+
+		input_size   = env.observation_space.shape[0]
+		output_size  = env.action_space.shape[0]
+
+		self.low = Tensor(env.action_space.low)
+		self.high = Tensor(env.action_space.high)
 
 		self.fc_1 = nn.Linear(input_size, hidden)
 		self.fc_2 = nn.Linear(hidden, hidden)
@@ -25,16 +31,22 @@ class MLPContinuousActorCritic(nn.Module):
 
 		self.value = nn.Linear(hidden, 1)
 
-		for para in self.parameters():
-			nn.init.kaiming_normal_(para, mode='fan_out', nonlinearity='relu')
+		for name, para in self.named_parameters():
+			if "weight" in name:
+				nn.init.kaiming_normal_( para , mode='fan_out', nonlinearity='relu')
+			else:
+				para.data.fill_( 0 )
 
-		self.log_std = nn.Parameters(torch.zeros(1, output_size))
+		self.log_std = nn.Parameter(torch.zeros(1, output_size))
 	
 	def forward(self, input_data):
-		out = F.tanh(self.fc_1(input_data))
-		out = F.tanh(self.fc_2(out))
+		out = F.relu(self.fc_1(input_data))
+		out = F.relu(self.fc_2(out))
 
 		mean = self.mean(out)
+		mean = torch.max(mean, self.low)
+		mean = torch.min(mean, self.high)
+
 		std = torch.exp(self.log_std)
 
 		value = self.value(out)
@@ -42,26 +54,34 @@ class MLPContinuousActorCritic(nn.Module):
 		return mean, std, value
 
 class MLPDiscreteActorCritic(nn.Module):
-	def __init__(self, input_size, output_size, hidden=256):
+	def __init__(self, env, hidden=256):
 		
 		super().__init__()
 
+		input_size   = env.observation_space.shape[0]
+		output_size  = env.action_space.n
+
 		self.fc_1 = nn.Linear(input_size, hidden)
 		self.fc_2 = nn.Linear(hidden, hidden)
-		self.action = nn.Linear(hidden, output_size)
 
+		self.action = nn.Linear(hidden, output_size)
 		self.value = nn.Linear(hidden, 1)
-	
+		
+		for name, para in self.named_parameters():
+			if "weight" in name:
+				nn.init.kaiming_normal_( para , nonlinearity='relu')
+			else:
+				para.data.fill_( 0 )
+
+
 	def forward(self, input_data):
-		out = F.tanh(self.fc_1(input_data))
-		out = F.tanh(self.fc_2(out))
+		out = F.relu(self.fc_1(input_data))
+		out = F.relu(self.fc_2(out))
 
 		action = self.action(out)
 		value = self.value(out)
 
 		return action, value
-
-
 
 
 class ConvDiscreteActorCritic(nn.Module):
