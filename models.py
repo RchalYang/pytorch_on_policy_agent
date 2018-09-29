@@ -84,8 +84,11 @@ class MLPDiscreteActorCritic(nn.Module):
 
 
 class ConvDiscreteActorCritic(nn.Module):
-	def __init__(self, input_shape, output_size, history_len=1, hidden=256):
+	def __init__(self, env, hidden=256):
 		super(ConvDiscreteActorCritic, self).__init__()
+
+		input_shape = env.observation_space.shape
+		output_size = env.action_space.n
 
 		self.conv1 = nn.Conv2d(history_len, 16, kernel_size=8, stride=4)
 		self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
@@ -118,7 +121,26 @@ class ConvDiscreteActorCritic(nn.Module):
 		value = self.value(value)
 
 		return action, value
-	
+
+class TestConv(nn.Module):
+	def __init__(self, output_size):
+		super(TestConv, self).__init__()
+
+		self.conv1 = nn.Conv2d(4, 16, kernel_size=8, stride=4)
+		self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
+		self.fc = nn.Linear(2048, 256)
+		self.head = nn.Linear(256, output_size)
+		self.softmax = nn.Softmax(dim=-1)
+		
+		self.value = nn.Linear(256, 1)
+
+	def forward(self, x):
+		out = F.relu((self.conv1(x)))
+		out = F.relu(self.conv2(out))
+		out = F.relu(self.fc(out.view(out.size(0), -1)))
+		probs = self.softmax(self.head(out))
+		value = self.value(out)
+		return probs, value
 
 class Policy(nn.Module):
 	def __init__(self, output_size):
