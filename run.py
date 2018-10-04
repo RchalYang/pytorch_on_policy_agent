@@ -58,13 +58,13 @@ def main(args):
 
     model_store_sprefix = "snapshot"
     
-    # env = NormalizedEnv(gym.make(args.env))
-    env = StackFrame(gym.make(args.env))
+    env = NormalizedEnv(gym.make(args.env))
+    # env = StackFrame(gym.make(args.env))
 # NormalizedEnv
-    # model = MLPContinuousActorCritic(env)
+    model = MLPContinuousActorCritic(env)
     
     # model = MLPDiscreteActorCritic(env)
-    model = TestConv( env.action_space.n )
+    # model = TestConv( env.action_space.n )
 
     optimizer = optim.Adam( model.parameters(), lr=args.rllr )
 

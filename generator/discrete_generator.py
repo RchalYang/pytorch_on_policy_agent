@@ -34,7 +34,14 @@ class DiscreteGenerator(Generator):
 
             probs = F.softmax(probs, dim = 1)
             act_dis = Categorical(probs)
-            action = act_dis.sample()
+            
+            try:
+                action = act_dis.sample()
+            except RuntimeError:
+                print(probs)
+                probs, value = model(observation_tensor)
+                print(probs)
+
             action = action.cpu().numpy()
             actions.append(action)
             
