@@ -1,10 +1,13 @@
 import collections
 import copy
 import numpy as np
+import os
+import stat
 import os.path as osp
 from itertools import count
 import gym
 import logging
+import shutil
 
 import torch
 from torch.distributions import Categorical
@@ -37,7 +40,12 @@ class BaseAgent:
         self.step_time = 0
         self.algo="base"
 
-        self.writer = SummaryWriter( osp.join("./log", args.id) )
+        work_dir = osp.join("log", args.id )
+        if osp.exists( work_dir ):
+            os.chmod(work_dir, stat.S_IWUSR)
+            shutil.rmtree(work_dir)
+        self.writer = SummaryWriter( work_dir )
+        self.total_time_steps = 0
 
     def _soft_update_target(self, target, source):
         for t, s in zip(target.parameters(), source.parameters()):
@@ -90,14 +98,13 @@ class BaseAgent:
 
     def step(self):
 
-        ave_epi_rew = self.data_generator.generate_data(self.model, self.env, self.memory)
         for batch in self.memory.one_iteration():
             obs, acts, advs, est_rs = batch
             self._optimize( obs, acts, advs, est_rs)
 
         self.step_time += 1
 
-        return ave_epi_rew
+        # return ave_epi_rew
 
 
     def load_model(self, prefix):
@@ -117,11 +124,14 @@ class BaseAgent:
         running_reward = None
         
         for t in count():
-            reward = self.step()
+            
+            reward, batch_time_steps = self.data_generator.generate_data(self.model, self.env, self.memory)
+            self.total_time_steps += batch_time_steps
+            self.step()
             running_reward = 0.9*running_reward + 0.1*reward if running_reward is not None else reward
         
             print("Episode:{}, running_Reward:{}".format(t,running_reward))
             print("Reward:{}".format(reward))
-            self.writer.add_scalar("Training/Reward", reward ,t)
+            self.writer.add_scalar("Training/Reward", reward ,self.total_time_steps)
             if t % save_interval == 0:
                 self.snapshot(model_store_sprefix)

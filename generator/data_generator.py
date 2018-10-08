@@ -16,6 +16,7 @@ class Generator:
 
         self.tau = param.tau
         self.gamma = param.gamma
+        self.episodes = param.episodes
 
     def _generate_one_episode(self, env, model):
         """
@@ -30,7 +31,7 @@ class Generator:
         current_timesteps = 0
         ave_epi_rew = 0
         epis = 0
-        while current_timesteps < self.time_steps:
+        for i in range(self.episodes):
             obs, acts, advs, est_rs, epi_rew, epi_timesteps = self._generate_one_episode(env, model)
             memory.obs.extend( obs )
             memory.acts.extend( acts )
@@ -42,7 +43,7 @@ class Generator:
             current_timesteps += epi_timesteps
             epis += 1
         
-        return ave_epi_rew
+        return ave_epi_rew, current_timesteps
     
     def _generalized_advantage_estimation(self, rewards, values, last_value):
         """

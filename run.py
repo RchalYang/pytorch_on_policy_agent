@@ -56,12 +56,19 @@ class StackFrame(gym.Wrapper):
         return np.asarray(np.stack(self.buffer,axis=0)), reward, done, info
 
 
+
+# def load_model( model, prefix):
+#     model_file_name="{}_model_latest_model.pth".format(self.algo)
+#     model_path=osp.join(prefix, model_file_name)
+#     self.model.load_state_dict(torch.load( model_path))
+
 def main(args):
 
     model_store_sprefix = "snapshot"
     
     env = NormalizedEnv(gym.make(args.env))
     # env = StackFrame(gym.make(args.env))
+    # env = gym.make(args.env)
 # NormalizedEnv
     model = MLPContinuousActorCritic(env)
     

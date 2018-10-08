@@ -23,16 +23,17 @@ def get_args():
 	#PPO
 	parser.add_argument("--update_time", help = "update num for ppo", type = int, default=5 )
 	parser.add_argument("--clip_para",   help = "clip_para for ppo", type = float, default=0.2 )
+	parser.add_argument("--opt_times",   help = " optimization times for ppo ", type = int, default = 10)
 	#A3C
 	parser.add_argument("--num_workers", help = "num of workers for a3c", type = int, default=4 )
 
 
 	# data generator
-	parser.add_argument("--batch_size",              help="batch size",         type=int,   default=16384)
-	parser.add_argument("--max_episode_time_step",   help="episode time step",  type=int,   default=100000)
-	parser.add_argument("--time_steps",   help="episode time step",            type=int,   default=4096)
-	parser.add_argument("--tau",          help="tau for gae",           type=float, default=1.0 )
-	parser.add_argument("--gamma",        help="discount factor",               type=float, default=0.98)
+	parser.add_argument("--batch_size",              help="batch size",         type=int,   default=64)
+	parser.add_argument("--max_episode_time_step",   help="episode time step",  type=int,   default=2048)
+	parser.add_argument("--time_steps",   help="episode time step",            type=int,   default=2048)
+	parser.add_argument("--tau",          help="tau for gae",           type=float, default=0.95 )
+	parser.add_argument("--gamma",        help="discount factor",               type=float, default=0.99)
 	parser.add_argument("--episodes",     help="episodes generated every time", type=int,   default=1)
 	parser.add_argument("--no_gae",       help="do not use gae",                action="store_true", default=False,)
 

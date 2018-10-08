@@ -24,6 +24,8 @@ class PPOAgent(A2CAgent):
         self.update_time  = args.update_time
         self.clip_para    = args.clip_para
         self.algo="ppo"
+        
+        self.opt_times = args.opt_times
 
 
     def _optimize(self, obs, acts, advs, est_rs):
@@ -80,14 +82,14 @@ class PPOAgent(A2CAgent):
         surrogate_loss_clip = torch.clamp(ratio, 
                         1.0 - self.clip_para,
                         1.0 + self.clip_para) * advs
-        print("ratio min:{} max:{}".format(ratio.detach().min().item(), ratio.detach().max().item()))
+        # print("ratio min:{} max:{}".format(ratio.detach().min().item(), ratio.detach().max().item()))
         surrogate_loss = -torch.mean(torch.min(surrogate_loss_clip, surrogate_loss_pre_clip))
 
         policy_loss = surrogate_loss - self.entropy_para * ent.mean()
 
         criterion = nn.MSELoss()
         critic_loss = criterion( values, est_rs )
-        print("Critic Loss:{}".format(critic_loss.item()))
+        # print("Critic Loss:{}".format(critic_loss.item()))
 
         self.writer.add_scalar( "Training/Critic_Loss", critic_loss.item(), self.step_count )
         loss = policy_loss + self.value_loss_coeff * critic_loss
@@ -102,12 +104,13 @@ class PPOAgent(A2CAgent):
         """
         Executes an iteration of PPO
         """
-        
-        ave_epi_rew = super(PPOAgent, self).step()
+        # for i in range(self.opt_times):
+        super(PPOAgent, self).step()
+        self.model_old.load_state_dict( self.model.state_dict() )
 
-        if self.step_time % self.update_time == 0:
-            self.model_old.load_state_dict( self.model.state_dict() )
+        # if self.step_time % self.update_time == 0:
+        # self.model_old.load_state_dict( self.model.state_dict() )
             # self._soft_update_target(self.value_old, self.value)
-            print("Updated old model")
+        # print("Updated old model")
 
-        return ave_epi_rew
+        # return ave_epi_rew

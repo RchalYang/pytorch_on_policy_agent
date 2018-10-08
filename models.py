@@ -14,8 +14,48 @@ def calc_feature_map_shape(input_shape, conv_info):
 	
 	return (h,w)
 
+# class MLPContinuousActorCritic(nn.Module):
+# 	def __init__(self, env,  hidden=256):
+
+# 		super().__init__()
+
+# 		input_size   = env.observation_space.shape[0]
+# 		output_size  = env.action_space.shape[0]
+
+# 		self.low = Tensor(env.action_space.low)
+# 		self.high = Tensor(env.action_space.high)
+
+# 		self.fc_1 = nn.Linear(input_size, hidden)
+# 		self.fc_2 = nn.Linear(hidden, hidden)
+# 		self.mean = nn.Linear(hidden, output_size)
+
+# 		self.value = nn.Linear(hidden, 1)
+
+# 		for name, para in self.named_parameters():
+# 			if "weight" in name:
+# 				nn.init.kaiming_normal_( para , mode='fan_out', nonlinearity='relu')
+# 			else:
+# 				para.data.fill_( 0 )
+
+# 		self.log_std = nn.Parameter(torch.zeros(1, output_size))
+	
+# 	def forward(self, input_data):
+# 		out = F.relu(self.fc_1(input_data))
+# 		out = F.relu(self.fc_2(out))
+
+# 		mean = self.mean(out)
+# 		mean = torch.max(mean, self.low)
+# 		mean = torch.min(mean, self.high)
+
+# 		std = torch.exp(self.log_std)
+
+# 		value = self.value(out)
+
+# 		return mean, std, value
+
+
 class MLPContinuousActorCritic(nn.Module):
-	def __init__(self, env,  hidden=256):
+	def __init__(self, env,  hidden=64):
 
 		super().__init__()
 
@@ -25,33 +65,39 @@ class MLPContinuousActorCritic(nn.Module):
 		self.low = Tensor(env.action_space.low)
 		self.high = Tensor(env.action_space.high)
 
-		self.fc_1 = nn.Linear(input_size, hidden)
-		self.fc_2 = nn.Linear(hidden, hidden)
+		self.action_1 = nn.Linear(input_size, hidden)
+		self.action_2 = nn.Linear(hidden, hidden)
 		self.mean = nn.Linear(hidden, output_size)
 
+		self.value_1 = nn.Linear(input_size, hidden)
+		self.value_2 = nn.Linear(hidden, hidden)
 		self.value = nn.Linear(hidden, 1)
 
 		for name, para in self.named_parameters():
 			if "weight" in name:
-				nn.init.kaiming_normal_( para , mode='fan_out', nonlinearity='relu')
+				nn.init.kaiming_normal_( para , mode='fan_out', nonlinearity='tanh')
 			else:
 				para.data.fill_( 0 )
 
 		self.log_std = nn.Parameter(torch.zeros(1, output_size))
 	
 	def forward(self, input_data):
-		out = F.relu(self.fc_1(input_data))
-		out = F.relu(self.fc_2(out))
-
+		out = F.tanh(self.action_1(input_data))
+		out = F.tanh(self.action_2(out))
 		mean = self.mean(out)
+
+		out = F.tanh(self.value_1(input_data))
+		out = F.tanh(self.value_2(out))
+		value = self.value(out)
+
 		mean = torch.max(mean, self.low)
 		mean = torch.min(mean, self.high)
 
 		std = torch.exp(self.log_std)
 
-		value = self.value(out)
-
+		
 		return mean, std, value
+
 
 class MLPDiscreteActorCritic(nn.Module):
 	def __init__(self, env, hidden=256):
