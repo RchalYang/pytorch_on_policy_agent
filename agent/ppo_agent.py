@@ -89,11 +89,14 @@ class PPOAgent(A2CAgent):
         critic_loss = criterion( values, est_rs )
         print("Critic Loss:{}".format(critic_loss.item()))
 
+        self.writer.add_scalar( "Training/Critic_Loss", critic_loss.item(), self.step_count )
         loss = policy_loss + self.value_loss_coeff * critic_loss
 
         loss.backward()
 
         self.optim.step()
+
+        self.step_count += 1
 
     def step(self):
         """

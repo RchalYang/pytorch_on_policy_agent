@@ -24,6 +24,7 @@ class A2CAgent(ReinforceAgent):
         self.model_old = copy.deepcopy(self.model)
         self.value_loss_coeff = args.value_loss_coeff
         self.algo="a2c"
+        self.step_count = 0
 
     def _optimize(self, observations, actions, discounted_rewards):
 

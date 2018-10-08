@@ -12,6 +12,8 @@ from torch.distributions import Categorical
 from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
 
+from tensorboardX import SummaryWriter
+
 class BaseAgent:
     def __init__(self, args, model, optim, env, data_generator, memory, continuous):
 
@@ -34,6 +36,8 @@ class BaseAgent:
 
         self.step_time = 0
         self.algo="base"
+
+        self.writer = SummaryWriter( osp.join("./log", args.id) )
 
     def _soft_update_target(self, target, source):
         for t, s in zip(target.parameters(), source.parameters()):
@@ -111,11 +115,13 @@ class BaseAgent:
         logging.info(self.algo)
 
         running_reward = None
+        
         for t in count():
             reward = self.step()
             running_reward = 0.9*running_reward + 0.1*reward if running_reward is not None else reward
         
             print("Episode:{}, running_Reward:{}".format(t,running_reward))
             print("Reward:{}".format(reward))
+            self.writer.add_scalar("Training/Reward", reward ,t)
             if t % save_interval == 0:
                 self.snapshot(model_store_sprefix)

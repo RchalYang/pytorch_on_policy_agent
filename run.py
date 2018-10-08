@@ -21,6 +21,8 @@ from memory import Memory
 from agent import PPOAgent
 from utils.wrapper import *
 
+import tensorboardX
+
 format = "%(asctime)s %(threadName)s %(levelname)s: %(message)s"
 log_formatter = logging.Formatter(format)
 logging.basicConfig(level=logging.INFO, format=format)
@@ -68,13 +70,13 @@ def main(args):
 
     optimizer = optim.Adam( model.parameters(), lr=args.rllr )
 
-    # cont_generator = ContinuousGenerator(args)
-    dis_generator = DiscreteGenerator(args)
+    cont_generator = ContinuousGenerator(args)
+    # dis_generator = DiscreteGenerator(args)
 
     memory = Memory(args)
 
-    agent = PPOAgent(args, model, optimizer, env, dis_generator,memory
-        , False)
+    agent = PPOAgent(args, model, optimizer, env, cont_generator,memory
+        , True)
     if args.resume:
         agent.load_model(model_store_sprefix)
 

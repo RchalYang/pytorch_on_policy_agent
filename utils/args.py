@@ -39,6 +39,8 @@ def get_args():
 	# memory
 	parser.add_argument("--shuffle",       help="shuffle data in memory",       action="store_true", default=False,)
 
+	#tensorboard
+	parser.add_argument("--id",            help="id for tensorboard",           type=str,   default="origin" )
 
 	args = parser.parse_args()
 	return args
