@@ -62,17 +62,43 @@ class ContinuousGenerator(Generator):
 class MPContinuousGenerator(Generator):
     def __init__(self, param):
         super().__init__(param)
-        manager = mp.manager()
+        self.manager = mp.manager()
         
-        counter = mp.Value('i', 0)
-        lock = mp.Lock()
+        self.counter = mp.Value('i', 0)
+        self.lock = mp.Lock()
 
-        pool = mp.Pool( processes=param.num_process)
+        self.model_dict = self.manager.Dict()
+
+        # pool = mp.Pool( processes=param.num_process)
+        self.semaphore = self.manager.Semaphore()
 
         self.shared_model = None
+        self.process()
+
+        self.num_process = param.num_process
+
+        self.processes = []
+        for i in range( self.num_process ):
+            p = mp.Process( target = MP.generate_data_subprocess, args = ( dic,  ) ) )
+
+    @staticmethod
+    def traj_generator( model, env, horizon ):
+
+
+        # Initialize history arrays
+        obs = np.array([ob for _ in range(horizon)])
+        rews = np.zeros(horizon, 'float32')
+        vpreds = np.zeros(horizon, 'float32')
+        news = np.zeros(horizon, 'int32')
+        acs = np.array([ac for _ in range(horizon)])
+        
+        env.reset()
+        while True:
 
     @staticmethod    
-    def generate_data_single_process(model, env, model, horizon ):
+    def subprocess (rank, dict, env, model, horizon ):
+
+        
 
         mirror = mirror_id is not None
         t = 0
