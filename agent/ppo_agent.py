@@ -82,7 +82,9 @@ class PPOAgent(A2CAgent):
         surrogate_loss_clip = torch.clamp(ratio, 
                         1.0 - self.clip_para,
                         1.0 + self.clip_para) * advs
+                        
         # print("ratio min:{} max:{}".format(ratio.detach().min().item(), ratio.detach().max().item()))
+
         surrogate_loss = -torch.mean(torch.min(surrogate_loss_clip, surrogate_loss_pre_clip))
 
         policy_loss = surrogate_loss - self.entropy_para * ent.mean()
@@ -104,13 +106,8 @@ class PPOAgent(A2CAgent):
         """
         Executes an iteration of PPO
         """
-        # for i in range(self.opt_times):
-        super(PPOAgent, self).step()
+        for i in range(self.opt_times):
+            super(PPOAgent, self).step()
+        
         self.model_old.load_state_dict( self.model.state_dict() )
 
-        # if self.step_time % self.update_time == 0:
-        # self.model_old.load_state_dict( self.model.state_dict() )
-            # self._soft_update_target(self.value_old, self.value)
-        # print("Updated old model")
-
-        # return ave_epi_rew

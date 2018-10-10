@@ -66,12 +66,14 @@ def main(args):
 
     model_store_sprefix = "snapshot"
     
+    # NormalizedEnv
     env = NormalizedEnv(gym.make(args.env))
     # env = StackFrame(gym.make(args.env))
     # env = gym.make(args.env)
-# NormalizedEnv
-    model = MLPContinuousActorCritic(env)
+    env.seed(args.seed)
+    torch.manual_seed(args.seed)
     
+    model = MLPContinuousActorCritic(env)
     # model = MLPDiscreteActorCritic(env)
     # model = TestConv( env.action_space.n )
 
@@ -82,8 +84,7 @@ def main(args):
 
     memory = Memory(args)
 
-    agent = PPOAgent(args, model, optimizer, env, cont_generator,memory
-        , True)
+    agent = PPOAgent(args, model, optimizer, env, cont_generator,memory, True)
     if args.resume:
         agent.load_model(model_store_sprefix)
 
