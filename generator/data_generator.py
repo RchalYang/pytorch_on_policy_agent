@@ -1,6 +1,7 @@
 import torch
 import gym
 import copy
+import multiprocessing as mp
 
 class Generator:
     def __init__(self, param):
@@ -80,89 +81,57 @@ class Generator:
 
         return advantages, estimate_returns
 
+
 class MPGenerator(Generator):
     def __init__(self, param):
         super().__init__(param)
-        self.manager = mp.manager()
-        
-        self.counter = mp.Value('i', 0)
-        self.lock = mp.Lock()
-
-        self.model_dict = self.manager.Dict()
-
-        # pool = mp.Pool( processes=param.num_process)
-        self.semaphore = self.manager.Semaphore()
 
         self.shared_model = None
-        self.process()
-
+        
         self.num_process = param.num_process
 
-        self.processes = []
-        for i in range( self.num_process ):
-            p = mp.Process( target = MP.generate_data_subprocess, args = ( dic,  ) ) )
-
-    @staticmethod
-    def traj_generator( model, env, horizon ):
-        raise NotImplementedError
- 
-    @staticmethod    
-    def subprocess (rank, dict, list, env, shared_model, horizon ):
-
-        model = copy.deepcopy(shared_model)
-        traj_gen = MPGenerator.traj_generator( model )
-
-        while True:
-
-
-    def generate_data(self, model, env, memory):
-
-        for i
+        self.pool = mp.Pool( processes=param.num_process)
     
-
-
-    def _generate_one_episode(self, env, model):
+    @staticmethod
+    def _generate_one_episode(env, model, horizon, reward_processor ):
         """
         generate one episode data and save them on memory
         """
-        total_reward = 0
+        raise NotImplementedError
+
+    def __getstate__(self):
+        self_dict = self.__dict__.copy()
+        del self_dict['pool']
+        return self_dict
+
+    # def __setstate__(self, state):
+    #     self.__dict__.update(state)
+
+    def generate_data(self, model, env, memory):
         
-        observations, actions, rewards, values = [], [], [], []
+        memory.clear()
 
-        observation = env.reset()
+        results = []
+        for i in range(self.episodes):
+            results.append( self.pool.apply_async( type(self)._generate_one_episode ,
+                ( env, model, self.max_episode_time_step, self.reward_processor  )
+              ))            
 
-        current_time_step = 0
+        current_timesteps = 0
+        ave_epi_rew = 0
+        epis = 0
+
+        for i in range(self.episodes):
+            result = results[i].get()
+            obs, acts, advs, est_rs, epi_rew, epi_timesteps = result
+            memory.obs.extend( obs )
+            memory.acts.extend( acts )
+            memory.advs.extend( advs )
+            memory.est_rs.extend( est_rs )
+
+            ave_epi_rew = epi_rew / (epis+1) + ave_epi_rew * epis / ( epis + 1 )
+
+            current_timesteps += epi_timesteps
+            epis += 1
         
-        while current_time_step <= self.max_episode_time_step:
-
-            observations.append(observation)
-
-            with torch.no_grad():
-                observation_tensor = Tensor(observation).unsqueeze(0)
-                mean, std, value = model(observation_tensor)
-
-            act_dis = Normal(mean, std)
-            action = act_dis.sample()
-            action = action.squeeze(0).cpu().numpy()
-            actions.append(action)
-            
-            observation, reward, done, _ = env.step(action)
-            # print(reward)
-            values.append(value.item())
-            rewards.append(reward)
-            total_reward += reward
-            if done:
-                break
-            
-            current_time_step += 1
-
-        last_value = 0
-        if not done:
-            observation_tensor = Tensor(observation).unsqueeze(0)
-            with torch.no_grad():
-                _, _, last_value = model( observation_tensor )
-            last_value = last_value.item()
-
-        advantages, estimate_returens = self.reward_processor(  rewards, values, last_value  )
-
-        return observations, actions, advantages, estimate_returens, total_reward, current_time_step
+        return ave_epi_rew, current_timesteps

@@ -14,11 +14,14 @@ from get_agent import get_agent
 from models import *
 
 from generator import ContinuousGenerator
+from generator import MPContinuousGenerator
 from generator import DiscreteGenerator
 
 from memory import Memory
 
 from agent import PPOAgent
+from agent import A2CAgent
+from agent import TRPOAgent
 from utils.wrapper import *
 
 import tensorboardX
@@ -72,19 +75,20 @@ def main(args):
     # env = gym.make(args.env)
     env.seed(args.seed)
     torch.manual_seed(args.seed)
-    
+
     model = MLPContinuousActorCritic(env)
     # model = MLPDiscreteActorCritic(env)
     # model = TestConv( env.action_space.n )
 
     optimizer = optim.Adam( model.parameters(), lr=args.rllr )
 
-    cont_generator = ContinuousGenerator(args)
+    # cont_generator = ContinuousGenerator(args)
+    cont_generator = MPContinuousGenerator(args)
     # dis_generator = DiscreteGenerator(args)
 
     memory = Memory(args)
 
-    agent = PPOAgent(args, model, optimizer, env, cont_generator,memory, True)
+    agent = A2CAgent(args, model, optimizer, env, cont_generator,memory, True)
     if args.resume:
         agent.load_model(model_store_sprefix)
 

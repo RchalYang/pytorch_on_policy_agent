@@ -39,6 +39,7 @@ def get_args():
 	parser.add_argument("--gamma",        help="discount factor",               type=float, default=0.99)
 	parser.add_argument("--episodes",     help="episodes generated every time", type=int,   default=1)
 	parser.add_argument("--no_gae",       help="do not use gae",                action="store_true", default=False,)
+	parser.add_argument("--num_process", help = "num of process for mp generator", type = int, default=4 )
 
 	# memory
 	parser.add_argument("--shuffle",       help="shuffle data in memory",       action="store_true", default=False,)

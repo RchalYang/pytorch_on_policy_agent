@@ -1,5 +1,11 @@
 # Pytorch Implementation for Policy Gradient Methods
 
+This repo contains several policy gradient algorithm implementation.
+
+Environments with continuous / discrete action space are both supported.
+
+Support MLP / Conv Policy.
+
 ## Currently contains:
 * Basic Reinforce
 * Actor-Critic
@@ -7,14 +13,11 @@
 * PPO
 * A3C
 
-P.S: Currently support discrete action space
-
 ## TODO:
 1. Add More Algorithm
 * Soft-actor-critic
 * DDPG
 * ...
-2. Add continuous support
 
 ## Basic Usage
 ```python
