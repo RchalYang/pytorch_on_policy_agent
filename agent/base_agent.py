@@ -51,61 +51,11 @@ class BaseAgent:
         for t, s in zip(target.parameters(), source.parameters()):
             t.data.copy_( (1. - self.tau) * t.data + self.tau * s.data )
 
-    # def _sample_episodes(self):
-    #     """
-    #     Return observation/action/rewards and average rewards for episodes
-
-    #     """
-    #     episodes_reward = []
-    #     curr_episodes = 0
-    #     total_reward = 0
-        
-    #     observations, actions = [], []
-
-    #     while curr_episodes < self.episodes:
-
-    #         curr_episodes += 1
-    #         rewards = []
-    #         observation = self.env.reset()
-
-    #         while True:
-
-    #             observations.append(observation)
-
-    #             with torch.no_grad():
-    #                 observation_tensor = Tensor(observation).unsqueeze(0)
-    #                 probabilities = self.policy(observation_tensor)
-
-    #             act_distribution = Categorical(probabilities)
-    #             action = act_distribution.sample()
-    #             actions.append(action)
-
-    #             observation, reward, done, _ = self.env.step(action.item())
-    #             rewards.append(reward)
-    #             total_reward += reward
-
-    #             if done:
-    #                 episodes_reward.append(rewards)
-    #                 break
-
-    #     def _flatten(l): return [item for sublist in l for item in sublist]
-    #     discounted_rewards = _flatten([math_utils.discount(epi, self.gamma) for epi in episodes_reward])
-
-    #     return observations, actions, discounted_rewards, total_reward/self.episodes
-
     def _optimize(self, observations, actions, rewards):
         raise NotImplementedError
 
     def step(self):
-
-        for batch in self.memory.one_iteration():
-            obs, acts, advs, est_rs = batch
-            self._optimize( obs, acts, advs, est_rs)
-
-        self.step_time += 1
-
-        # return ave_epi_rew
-
+        raise NotImplementedError
 
     def load_model(self, prefix):
         model_file_name="{}_model_latest_model.pth".format(self.algo)

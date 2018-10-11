@@ -82,13 +82,13 @@ def main(args):
 
     optimizer = optim.Adam( model.parameters(), lr=args.rllr )
 
-    # cont_generator = ContinuousGenerator(args)
-    cont_generator = MPContinuousGenerator(args)
+    cont_generator = ContinuousGenerator(args)
+    # cont_generator = MPContinuousGenerator(args)
     # dis_generator = DiscreteGenerator(args)
 
     memory = Memory(args)
 
-    agent = A2CAgent(args, model, optimizer, env, cont_generator,memory, True)
+    agent = TRPOAgent(args, model, optimizer, env, cont_generator,memory, True)
     if args.resume:
         agent.load_model(model_store_sprefix)
 

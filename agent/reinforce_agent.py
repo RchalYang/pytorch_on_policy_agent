@@ -4,7 +4,9 @@ import numpy as np
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.distributions import Categorical
+from torch.distributions import Normal
 
 from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
@@ -20,25 +22,49 @@ class ReinforceAgent(BaseAgent):
         self.algo="reinforce"
 
 
-    def _optimize(self, observations, actions, discounted_rewards):
+    def step(self):
 
-        self.optimizer.zero_grad()
+        for batch in self.memory.one_iteration():
+            obs, acts, rews = batch
+            self._optimize( obs, acts, rews )
+
+        self.step_time += 1
+
+    def _optimize(self, obs, acts, rews):
         
-        observations = Tensor(observations)
-        actions = Tensor(actions).long()
-        discounted_rewards = Tensor(discounted_rewards)
+        self.optim.zero_grad()
+        
+        obs  = Tensor( obs )
+        acts = Tensor( acts )
+        rews = Tensor( rews ).unsqueeze(1)
 
-        dis = self.policy(observations)
-        dis = Categorical(dis)
-        log_prob = dis.log_prob(actions)
-        mean_entropy = dis.entropy().mean()
+        if self.continuous:
+            mean, std = self.model( obs )
+            
+            dis = Normal(mean, std)
+            
+            log_prob = dis.log_prob( acts ).sum( -1, keepdim=True )
 
-        discounted_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-8)
+            ent = dis.entropy().sum( -1, keepdim=True )
 
-        actor_loss = -log_prob * discounted_rewards
+        else:
 
-        actor_loss = actor_loss.mean() - self.entropy_para * mean_entropy
+            probs = self.model(obs)
+
+            dis = F.softmax( probs, dim = 1 )
+            dis = Categorical( dis )
+
+            acts = acts.long()
+
+            log_prob = dis.log_prob(acts)
+            ent = dis.entropy()
+        
+        rews = ( rews - rews.mean()) / ( rews.std() + 1e-8)
+        
+        actor_loss = -log_prob * rews
+
+        actor_loss = actor_loss.mean() - self.entropy_para * ent.mean()
         
         actor_loss.backward()
 
-        self.optimizer.step()
+        self.optim.step()

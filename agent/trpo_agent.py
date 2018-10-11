@@ -1,20 +1,104 @@
 import collections
 import copy
 import torch
+import torch.nn.functional as F
+
 from torch.distributions import Categorical
-from torch.nn.utils.convert_parameters import vector_to_parameters, parameters_to_vector
+from torch.distributions import Normal
+
+# from torch.nn.utils.convert_parameters import vector_to_parameters, parameters_to_vector
 import numpy as np
 
 from utils.torch_utils import device,Tensor, Tensor_zeros_like
 import utils.math_utils as math_utils
 from .a2c_agent import A2CAgent
 
+#From Pytorch Official Github Repo
+def _check_param_device(param, old_param_device):
+    r"""This helper function is to check if the parameters are located
+    in the same device. Currently, the conversion between model parameters
+    and single vector form is not supported for multiple allocations,
+    e.g. parameters in different GPUs, or mixture of CPU/GPU.
+    Arguments:
+        param ([Tensor]): a Tensor of a parameter of a model
+        old_param_device (int): the device where the first parameter of a
+                                model is allocated.
+    Returns:
+        old_param_device (int): report device for the first time
+    """
+
+    # Meet the first parameter
+    if old_param_device is None:
+        old_param_device = param.get_device() if param.is_cuda else -1
+    else:
+        warn = False
+        if param.is_cuda:  # Check if in same GPU
+            warn = (param.get_device() != old_param_device)
+        else:  # Check if in CPU
+            warn = (old_param_device != -1)
+        if warn:
+            raise TypeError('Found two parameters on different devices, '
+                            'this is currently not supported.')
+    return old_param_device
+
+
+#From Pytorch Official Github Repo
+def parameters_to_vector(parameters):
+    r"""Convert parameters to one vector
+    Arguments:
+        parameters (Iterable[Tensor]): an iterator of Tensors that are the
+            parameters of a model.
+    Returns:
+        The parameters represented by a single vector
+    """
+    # Flag for the device where the parameter is located
+    param_device = None
+
+    vec = []
+    for param in parameters:
+        # Ensure the parameters are located in the same device
+        param_device = _check_param_device(param, param_device)
+
+        vec.append(param.view(-1))
+    return torch.cat(vec)
+
+
+#From Pytorch Official Github Repo
+def vector_to_parameters(vec, parameters):
+    r"""Convert one vector to the parameters
+    Arguments:
+        vec (Tensor): a single vector represents the parameters of a model.
+        parameters (Iterable[Tensor]): an iterator of Tensors that are the
+            parameters of a model.
+    """
+    # Ensure vec of type Tensor
+    if not isinstance(vec, torch.Tensor):
+        raise TypeError('expected torch.Tensor, but got: {}'
+                        .format(torch.typename(vec)))
+    # Flag for the device where the parameter is located
+    param_device = None
+
+    # Pointer for slicing the vector for each parameter
+    pointer = 0
+    for param in parameters:
+        # Ensure the parameters are located in the same device
+        param_device = _check_param_device(param, param_device)
+
+        # The length of the parameter
+        num_param = param.numel()
+        # Slice the vector, reshape it, and replace the old data of the parameter
+        param.data = vec[pointer:pointer + num_param].view_as(param).data
+
+        # Increment the pointer
+        pointer += num_param
+
 class TRPOAgent(A2CAgent):
-    def __init__(self,args,env_wrapper, continuous):
+    # def __init__(self,args,env_wrapper, continuous):
+    def __init__(self, args, model, optim, env, data_generator, memory, continuous):
         """
         Instantiate a TRPO agent
         """
-        super(TRPOAgent, self).__init__(args,env_wrapper, continuous)
+        super(TRPOAgent, self).__init__(args, model, optim, env, data_generator, memory, continuous)
                                         
         self.max_kl = args.max_kl
         self.cg_damping = args.cg_damping
@@ -27,22 +111,44 @@ class TRPOAgent(A2CAgent):
         """
         Returns an estimate of the average KL divergence between a given model and self.policy_model
         """
-        actprob = model(self.observations).detach() + 1e-8
-        old_actprob = self.policy(self.observations)
+        # actprob = model(self.observations).detach() + 1e-8
+        # old_actprob = self.model(self.observations)
 
-        return torch.sum(old_actprob * torch.log(old_actprob / actprob), 1).mean()
+        def normal_distribution_kl_divergence(mean_old, std_old, mean_new, std_new):
+            return torch.mean(torch.sum((torch.log(std_new) - torch.log(std_old) \
+                                        + (std_old * std_old + (mean_old - mean_new) * (mean_old - mean_new)) \
+                                        / (2.0 * std_new * std_new) \
+                                        - 0.5), 1))
+
+        if self.continuous:
+            mean_new, std_new, _ = model( self.obs )
+            mean_old, std_old, _ = self.model( self.obs )
+            
+            kl = normal_distribution_kl_divergence( mean_old, std_old, mean_new, std_new )
+
+        else:
+
+            probs_new, _ = model(self.obs)
+            probs_old, _ = self.model(self.obs)
+
+            probs_new = F.softmax( probs_new, dim = 1 )
+            probs_old = F.softmax( probs_old, dim = 1 )
+
+            kl = torch.sum(probs_old * torch.log( probs_old / (probs_new + 1e-8 ) ), 1).mean()
+
+        return kl
 
     def hessian_vector_product(self, vector):
         """
         Returns the product of the Hessian of the KL divergence and the given vector
         """
-        self.policy.zero_grad()
-        mean_kl_div = self.mean_kl_divergence(self.policy)
+        self.model.zero_grad()
+        mean_kl_div = self.mean_kl_divergence(self.model)
         
-        kl_grad_vector = torch.autograd.grad(mean_kl_div, self.policy.parameters(), create_graph=True)
+        kl_grad_vector = torch.autograd.grad(mean_kl_div, self.model.parameters(), create_graph=True)
         kl_grad_vector = torch.cat([grad.view(-1) for grad in kl_grad_vector])
         grad_vector_product = torch.sum(kl_grad_vector * vector)
-        second_order_grad = torch.autograd.grad(grad_vector_product, self.policy.parameters())
+        second_order_grad = torch.autograd.grad(grad_vector_product, self.model.parameters())
         
         fisher_vector_product = torch.cat([grad.contiguous().view(-1) for grad in second_order_grad])
 
@@ -78,13 +184,38 @@ class TRPOAgent(A2CAgent):
         Returns the surrogate loss w.r.t. the given parameter vector theta
         """
         theta = theta.detach()
-        new_model = copy.deepcopy(self.policy)
+        new_model = copy.deepcopy(self.model)
         vector_to_parameters(theta, new_model.parameters())
+            
+        # prob_new = new_model(self.obs).gather(1, self.acts).detach()
+        # prob_old = self.model(self.obs).gather(1, self.acts).detach() + 1e-8
 
-        prob_new = new_model(self.observations).gather(1, self.actions).detach()
-        prob_old = self.policy(self.observations).gather(1, self.actions).detach() + 1e-8
+        if self.continuous:
+            mean_new, std_new, _ = new_model( self.obs )
+            mean_old, std_old, _ = self.model( self.obs )
+                
+            dis_new = Normal( mean_new, std_new )
+            dis_old = Normal( mean_old, std_old )
+            
+            log_prob_new = dis_new.log_prob( self.acts ).sum( -1, keepdim=True )
+            log_prob_old = dis_old.log_prob( self.acts ).sum( -1, keepdim=True )
 
-        return -torch.mean((prob_new / prob_old) * self.advantage )
+            prob_new = torch.exp( log_prob_new )
+            prob_old = torch.exp( log_prob_old )
+
+        else:
+
+            probs_new, _ = new_model(self.obs)
+            probs_old, _ = self.model(self.obs)
+
+            dis_new = F.softmax( probs_new, dim = 1 )
+            dis_old = F.softmax( probs_old, dim = 1 )
+
+            probs_new = dis_new.gather( 1, self.acts )
+            probs_old = dis_old.gather( 1, self.acts ) 
+
+
+        return -torch.mean((probs_new / probs_old) * self.advs )
 
     def linesearch(self, x, fullstep, expected_improve_rate):
         """
@@ -108,37 +239,61 @@ class TRPOAgent(A2CAgent):
                 return xnew
         return x.detach()
 
-    def _optimize(self, observations, actions, discounted_rewards):
-        """
-        TRPO Update
-        """
+    def _optimize(self, obs, acts, advs, est_rs):
         
-        self.observations, self.actions, self.discounted_rewards = observations, actions, discounted_rewards
+        self.obs, self.acts, self.advs, self.est_rs = obs, acts, advs, est_rs
 
-        # Generate Tensor
-        self.observations       = Tensor(self.observations)
-        self.actions            = Tensor(self.actions).long().unsqueeze(1)
-        self.discounted_rewards = Tensor(self.discounted_rewards).unsqueeze(1)
+        self.obs  = Tensor( self.obs )
+        self.acts = Tensor( self.acts )
+        self.advs = Tensor( self.advs ).unsqueeze(1)
+        self.est_rs = Tensor( self.est_rs ).unsqueeze(1)
 
         # Calculate Advantage & Normalize it
-        baseline = self.value(self.observations).detach()  
-        self.advantage = self.discounted_rewards - baseline
-        self.advantage = (self.advantage - self.advantage.mean()) / (self.advantage.std() + 1e-8)
+        self.advs = (self.advs - self.advs.mean()) / (self.advs.std() + 1e-8)
 
         # Surrogate loss with Entropy
-        action_dists = self.policy(self.observations)
-        new_p = action_dists.gather(1, self.actions)
-        old_p = new_p.detach() + 1e-8
-        prob_ratio = new_p / old_p
 
-        entropy = -torch.sum(action_dists*action_dists.log(), 1).mean()
-        
-        surrogate_loss = - torch.mean(prob_ratio * self.advantage) - self.entropy_para * entropy
+        if self.continuous:
+            mean, std, values = self.model( self.obs )
+
+            dis = Normal(mean, std)
+            
+            log_prob = dis.log_prob( self.acts ).sum( -1, keepdim=True )
+
+            ent = dis.entropy().sum( -1, keepdim=True )
+
+            probs_new = torch.exp( log_prob )
+            probs_old = probs_new.detach() + 1e-8
+
+        else:
+
+            probs, values = self.model( self.obs)
+
+            dis = F.softmax( probs, dim = 1 )
+
+            self.acts = self.acts.long()
+
+            probs_new = dis.gather( 1, self.acts )
+            probs_old = probs_new + 1e-8 
+
+            ent = -( dis.log() * dis ).sum(-1)
+
+
+        ratio = probs_new / probs_old
+
+        surrogate_loss = - torch.mean( ratio * self.advs ) - self.entropy_para * ent.mean()
+
+        # criterion = torch.nn.MSELoss()
+        # empty_value_loss = criterion( values, values.detach() )
 
         # Calculate the gradient of the surrogate loss
-        self.policy.zero_grad()
+        self.model.zero_grad()
         surrogate_loss.backward()
-        policy_gradient = parameters_to_vector([p.grad for p in self.policy.parameters()]).squeeze(0).detach()
+        #ensure value net part grads is tensor full with zero other than NoneType
+        # empty_value_loss.backward()
+        # print(surrogate_loss)
+        # print( [p.grad for p in self.model.parameters()] )
+        policy_gradient = parameters_to_vector([p.grad for p in self.model.parameters()]).squeeze(0).detach()
         
         # ensure gradient is not zero
         if policy_gradient.nonzero().size()[0]:
@@ -152,27 +307,33 @@ class TRPOAgent(A2CAgent):
             fullstep = step_direction / lm
 
             gdotstepdir = -policy_gradient.dot(step_direction)
-            theta = self.linesearch(parameters_to_vector(self.policy.parameters()).detach(), fullstep, gdotstepdir / lm)
+            theta = self.linesearch(parameters_to_vector(self.model.parameters()).detach(), fullstep, gdotstepdir / lm)
             # Update parameters of policy model
-            old_model = copy.deepcopy(self.policy)
-            old_model.load_state_dict(self.policy.state_dict())
+            old_model = copy.deepcopy(self.model)
+            old_model.load_state_dict(self.model.state_dict())
 
             if any(np.isnan(theta.cpu().detach().numpy())):
                 print("NaN detected. Skipping update...")
             else:
-                vector_to_parameters(theta, self.policy.parameters())
+                vector_to_parameters(theta, self.model.parameters())
 
             kl_old_new = self.mean_kl_divergence(old_model)
-            print( 'KL:{:10} , Entropy:{:10}'.format(kl_old_new.item(), entropy.item()))
+            print( 'KL:{:10} , Entropy:{:10}'.format(kl_old_new.item(), ent.item()))
 
         else:
             print("Policy gradient is 0. Skipping update...")
 
-        self.value.zero_grad()
-        values = self.value(self.observations)
+
+        self.model.zero_grad()
+
+        if self.continuous:
+            _, _, values = self.model( obs )
+        else:
+            _, values = self.model(obs)
+
         criterion = torch.nn.MSELoss()
-        critic_loss = criterion(values, self.discounted_rewards )
+        critic_loss = criterion(values, self.est_rs )
         critic_loss.backward()
-        self.value_optimizer.step()
+        self.optim.step()
         print("MSELoss for Value Net:{}".format(critic_loss.item()))
         

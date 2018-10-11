@@ -9,8 +9,6 @@ import torch.nn.functional as F
 from torch.distributions import Categorical
 from torch.distributions import Normal
 
-from torch.nn.utils.convert_parameters import vector_to_parameters, parameters_to_vector
-
 from utils.torch_utils import device, Tensor
 import utils.math_utils as math_utils
 
@@ -21,6 +19,8 @@ class PPOAgent(A2CAgent):
 
         super(PPOAgent,self).__init__( args, model, optim, env, data_generator, memory, continuous)
         
+        self.model_old = copy.deepcopy(self.model)
+
         self.update_time  = args.update_time
         self.clip_para    = args.clip_para
         self.algo="ppo"
@@ -82,7 +82,7 @@ class PPOAgent(A2CAgent):
         surrogate_loss_clip = torch.clamp(ratio, 
                         1.0 - self.clip_para,
                         1.0 + self.clip_para) * advs
-                        
+
         # print("ratio min:{} max:{}".format(ratio.detach().min().item(), ratio.detach().max().item()))
 
         surrogate_loss = -torch.mean(torch.min(surrogate_loss_clip, surrogate_loss_pre_clip))
