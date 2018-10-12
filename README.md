@@ -1,4 +1,6 @@
-# Pytorch Implementation for Policy Gradient Methods
+# Pytorch-Policy-Gradient
+ 
+Pytorch Implementation for Policy Gradient Methods
 
 This repo contains several policy gradient algorithm implementation.
 
@@ -21,5 +23,5 @@ Support MLP / Conv Policy.
 
 ## Basic Usage
 ```python
-    python run.py --agent=ppo --batch_size=512 --rllr=1e-3 --env=PongNoFrameskip-v4
+    python run.py --batch_size=512 --rllr=1e-3 --env=HalfCheetah-v1
 ```

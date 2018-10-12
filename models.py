@@ -80,7 +80,22 @@ class MLPContinuousActorCritic(nn.Module):
 				para.data.fill_( 0 )
 
 		self.log_std = nn.Parameter(torch.zeros(1, output_size))
+		
+		self.policy_params = [self.action_1, self.action_2, self.mean, self.log_std]
+		
+		# for param in self.parameters():
+		# 	print(param)
+		# print(" --------------------")
 	
+	def policy_parameters(self):
+		for module in self.policy_params:
+			# print( type( module) ) 
+			if isinstance( module , nn.Parameter ):
+				yield module
+			else:
+				for param in module.parameters():
+					yield param
+
 	def forward(self, input_data):
 		out = F.tanh(self.action_1(input_data))
 		out = F.tanh(self.action_2(out))
@@ -113,11 +128,18 @@ class MLPDiscreteActorCritic(nn.Module):
 		self.action = nn.Linear(hidden, output_size)
 		self.value = nn.Linear(hidden, 1)
 		
+		self.policy_params = [self.fc_1, self.fc_2, self.action]
+
 		for name, para in self.named_parameters():
 			if "weight" in name:
 				nn.init.normal_( para )
 			else:
 				para.data.fill_( 0 )
+
+	def policy_parameters(self):
+		for module in self.policy_params:
+			for param in module.parameters():
+				yield param
 
 	def forward(self, input_data):
 		out = F.relu(self.fc_1(input_data))
@@ -220,9 +242,16 @@ class TestConv(nn.Module):
 		self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
 		self.fc = nn.Linear(2048, 256)
 		self.head = nn.Linear(256, output_size)
-		self.softmax = nn.Softmax(dim=-1)
+		# self.softmax = nn.Softmax(dim=-1)
 		
 		self.value = nn.Linear(256, 1)
+
+		self.policy_params = [self.conv1, self.conv2, self.fc, self.head]
+
+	def policy_parameters(self):
+		for module in self.policy_params:
+			for param in module.parameters():
+				yield param
 
 	def forward(self, x):
 		out = F.relu((self.conv1(x)))

@@ -19,8 +19,8 @@ def get_args():
 	parser.add_argument("--value_loss_coeff", help="value loss coeff ",         type=float, default=1)
 	parser.add_argument("--tau_update",          help="tau for soft update",           type=float, default=1.0 )
 	#TRPO
-	parser.add_argument("--max_kl",       help="max KL divergence", type=float, default=0.001)
-	parser.add_argument("--cg_damping",   help="damping factor for conjugate gradient", type=float, default=0.001)
+	parser.add_argument("--max_kl",       help="max KL divergence", type=float, default=0.01)
+	parser.add_argument("--cg_damping",   help="damping factor for conjugate gradient", type=float, default=0.1)
 	parser.add_argument("--cg_iters",     help="num of iterations for conjugate gradient", type=int, default=10)
 	parser.add_argument("--residual_tol", help="residual tolerance", type=float, default=1e-10)
 	#PPO
