@@ -7,51 +7,68 @@ def calc_feature_map_shape(input_shape, conv_info):
 	"""
 	take input shape per-layer conv-info as input
 	"""
-	h , w = input_shape
+	h , w, c = input_shape
 	for padding, dilation, kernel_size, stride in conv_info:
 		h = int((h + 2*padding[0] - dilation[0] * ( kernel_size[0] - 1 ) - 1 ) / stride[0] + 1)
 		w = int((w + 2*padding[1] - dilation[1] * ( kernel_size[1] - 1 ) - 1 ) / stride[1] + 1)
 	
 	return (h,w)
 
-# class MLPContinuousActorCritic(nn.Module):
-# 	def __init__(self, env,  hidden=256):
+class MLPSharedContinuousActorCritic(nn.Module):
+	def __init__(self, env,  hidden=256):
 
-# 		super().__init__()
+		super().__init__()
 
-# 		input_size   = env.observation_space.shape[0]
-# 		output_size  = env.action_space.shape[0]
+		input_size   = env.observation_space.shape[0]
+		output_size  = env.action_space.shape[0]
 
-# 		self.low = Tensor(env.action_space.low)
-# 		self.high = Tensor(env.action_space.high)
+		self.low = Tensor(env.action_space.low)
+		self.high = Tensor(env.action_space.high)
 
-# 		self.fc_1 = nn.Linear(input_size, hidden)
-# 		self.fc_2 = nn.Linear(hidden, hidden)
-# 		self.mean = nn.Linear(hidden, output_size)
+		self.fc_1 = nn.Linear(input_size, hidden)
+		self.fc_2 = nn.Linear(hidden, hidden)
+		self.mean = nn.Linear(hidden, output_size)
 
-# 		self.value = nn.Linear(hidden, 1)
+		self.value = nn.Linear(hidden, 1)
 
-# 		for name, para in self.named_parameters():
-# 			if "weight" in name:
-# 				nn.init.kaiming_normal_( para , mode='fan_out', nonlinearity='relu')
-# 			else:
-# 				para.data.fill_( 0 )
+		for name, para in self.named_parameters():
+			if "weight" in name:
+				nn.init.kaiming_normal_( para , mode='fan_out', nonlinearity='relu')
+			else:
+				para.data.fill_( 0 )
 
-# 		self.log_std = nn.Parameter(torch.zeros(1, output_size))
+		self.log_std = nn.Parameter(torch.zeros(1, output_size))
+
+		self.policy_params = [self.fc_1, self.fc_2, self.mean, self.log_std]
+		
+		# for param in self.parameters():
+		# 	print(param)
+		# print(" --------------------")
 	
-# 	def forward(self, input_data):
-# 		out = F.relu(self.fc_1(input_data))
-# 		out = F.relu(self.fc_2(out))
+	def policy_parameters(self):
+		for module in self.policy_params:
+			# print( type( module) ) 
+			if isinstance( module , nn.Parameter ):
+				yield module
+			elif isinstance( module , torch.Tensor ):
+				yield module
+			else:
+				for param in module.parameters():
+					yield param
+	
+	def forward(self, input_data):
+		out = F.relu(self.fc_1(input_data))
+		out = F.relu(self.fc_2(out))
 
-# 		mean = self.mean(out)
-# 		mean = torch.max(mean, self.low)
-# 		mean = torch.min(mean, self.high)
+		mean = self.mean(out)
+		mean = torch.max(mean, self.low)
+		mean = torch.min(mean, self.high)
 
-# 		std = torch.exp(self.log_std)
+		std = torch.exp(self.log_std)
 
-# 		value = self.value(out)
+		value = self.value(out)
 
-# 		return mean, std, value
+		return mean, std, value
 
 
 class MLPContinuousActorCritic(nn.Module):
@@ -91,6 +108,8 @@ class MLPContinuousActorCritic(nn.Module):
 		for module in self.policy_params:
 			# print( type( module) ) 
 			if isinstance( module , nn.Parameter ):
+				yield module
+			elif isinstance( module , torch.Tensor ):
 				yield module
 			else:
 				for param in module.parameters():
@@ -162,14 +181,15 @@ class ConvDiscreteActorCritic(nn.Module):
 		self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
 
 		conv_info = [
-			((0,0),(0,0),(8,8),(4,4)),
-			((0,0),(0,0),(4,4),(2,2)),
+			((0,0),(1,1),(8,8),(4,4)),
+			((0,0),(1,1),(4,4),(2,2)),
 		]
-
+		
 		feature_map_shape = calc_feature_map_shape(input_shape, conv_info)
 		
 		dim_for_fc = feature_map_shape[0] * feature_map_shape[1] * 32
 
+		
 		self.fc_action = nn.Linear(dim_for_fc, hidden)
 		self.action = nn.Linear(hidden, output_size)
 

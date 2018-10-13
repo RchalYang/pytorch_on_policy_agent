@@ -8,9 +8,7 @@ import torch
 import torch.optim as optim
 
 from utils.args import get_args
-
-from get_agent import get_agent
-
+from utils.wrapper import WarpFrame
 from models import *
 
 from generator import ContinuousGenerator
@@ -30,65 +28,46 @@ format = "%(asctime)s %(threadName)s %(levelname)s: %(message)s"
 log_formatter = logging.Formatter(format)
 logging.basicConfig(level=logging.INFO, format=format)
 
+def get_functions(env, args):
+    l = len(env.observation_space.shape)
 
+    if l ==3 :
+        env = WarpFrame(env)
+        
+    # env = NormalizedEnv( env )
 
-def prepro(I):
-    """ prepro 210x160x3 into 6400 """
-    I = I[35:195]
-    I = I[::2, ::2, 0]
-    I[I == 144] = 0
-    I[I == 109] = 0
-    I[I != 0 ] = 1
-    return I.astype(np.float)
-
-class StackFrame(gym.Wrapper):
-    def __init__(self, env=None, history_length=4):
-        super(StackFrame, self).__init__(env)
-        self.history_length = history_length
-        self.buffer = None
-
-    def reset(self):
-        state = prepro(self.env.reset())
-        self.buffer = [state] * self.history_length
-        return np.asarray(np.stack(self.buffer,axis=0))
-
-    def step(self, action):
-        state, reward, done, info = self.env.step(action)
-        self.buffer.pop(0)
-        self.buffer.append(prepro(state))
-        return np.asarray(np.stack(self.buffer,axis=0)), reward, done, info
-
-
-
-# def load_model( model, prefix):
-#     model_file_name="{}_model_latest_model.pth".format(self.algo)
-#     model_path=osp.join(prefix, model_file_name)
-#     self.model.load_state_dict(torch.load( model_path))
+    if isinstance( env.action_space, gym.spaces.Discrete ):
+        if  l == 1:
+            return env, DiscreteGenerator(args), MLPDiscreteActorCritic(env), False
+        elif l ==3:
+            return env, DiscreteGenerator(args), ConvDiscreteActorCritic(env), False
+    
+    if isinstance( env.action_space, gym.spaces.Box ):
+        if l == 1:
+            return env, ContinuousGenerator(args), MLPContinuousActorCritic(env), True
+        elif l == 3:
+            return env, ContinuousGenerator(args), ConvContinuousActorCritic(env), True
+    
+    raise Exception("Environment currently not supported")
+    
 
 def main(args):
 
     model_store_sprefix = "snapshot"
     
     # NormalizedEnv
-    env = NormalizedEnv(gym.make(args.env))
-    # env = StackFrame(gym.make(args.env))
-    # env = gym.make(args.env)
+    env = gym.make(args.env)
+
     env.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    model = MLPContinuousActorCritic(env)
-    # model = MLPDiscreteActorCritic(env)
-    # model = TestConv( env.action_space.n )
-
+    env, generator, model, cont = get_functions(env, args) 
+    
     optimizer = optim.Adam( model.parameters(), lr=args.rllr )
-
-    cont_generator = ContinuousGenerator(args)
-    # cont_generator = MPContinuousGenerator(args)
-    # dis_generator = DiscreteGenerator(args)
 
     memory = Memory(args)
 
-    agent = TRPOAgent(args, model, optimizer, env, cont_generator,memory, True)
+    agent = PPOAgent(args, model, optimizer, env, generator,memory, cont)
     if args.resume:
         agent.load_model(model_store_sprefix)
 

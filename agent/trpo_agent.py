@@ -222,9 +222,8 @@ class TRPOAgent(A2CAgent):
         """
         theta = theta.detach()
         new_model = copy.deepcopy(self.model)
-        print( type(new_model) )
-        for param in new_model.parameters():
-            print(param)
+        # for param in new_model.parameters():
+        #     print(param)
         vector_to_parameters(theta, new_model.policy_parameters())
 
         if self.continuous:
@@ -346,8 +345,8 @@ class TRPOAgent(A2CAgent):
             if any(np.isnan(theta.cpu().detach().numpy())):
                 print("NaN detected. Skipping update...")
             else:
-                for param in self.model.policy_parameters():
-                    print(param)
+                # for param in self.model.policy_parameters():
+                #     print(param)
                 vector_to_parameters(theta, self.model.policy_parameters())
 
             kl_old_new = self.mean_kl_divergence(old_model)
@@ -366,7 +365,7 @@ class TRPOAgent(A2CAgent):
             _, values = self.model( self.obs)
 
         criterion = torch.nn.MSELoss()
-        critic_loss = criterion(values, self.est_rs )
+        critic_loss = self.value_loss_coeff * criterion(values, self.est_rs )
         critic_loss.backward()
         self.optim.step()
         print("MSELoss for Value Net:{}".format(critic_loss.item()))

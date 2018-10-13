@@ -29,6 +29,31 @@ class NormalizedEnv(gym.ObservationWrapper):
 		M2 = m_a + m_b + np.square(delta) * (self.num_steps - 1) / self.num_steps
 		self.var = M2 / self.num_steps
 
+def prepro(I):
+    """ prepro 210x160x3 into 6400 """
+    I = I[35:195]
+    I = I[::2, ::2, 0]
+    I[I == 144] = 0
+    I[I == 109] = 0
+    I[I != 0 ] = 1
+    return I.astype(np.float)
+
+class StackFrame(gym.Wrapper):
+    def __init__(self, env=None, history_length=4):
+        super(StackFrame, self).__init__(env)
+        self.history_length = history_length
+        self.buffer = None
+
+    def reset(self):
+        state = prepro(self.env.reset())
+        self.buffer = [state] * self.history_length
+        return np.asarray(np.stack(self.buffer,axis=0))
+
+    def step(self, action):
+        state, reward, done, info = self.env.step(action)
+        self.buffer.pop(0)
+        self.buffer.append(prepro(state))
+        return np.asarray(np.stack(self.buffer,axis=0)), reward, done, info
 
 class NoopResetEnv(gym.Wrapper):
 	def __init__(self, env, noop_max=30):
@@ -162,9 +187,11 @@ class WarpFrame(gym.ObservationWrapper):
 			low=0, high=255, shape=(self.height, self.width, 1))
 
 	def _observation(self, frame):
+		frame = frame.astype( np.uint8 )
 		frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 		frame = cv2.resize(frame, (self.width, self.height),
 					   interpolation=cv2.INTER_AREA)
+		frame = frame / 255.0 - 0.5
 		return frame[:, :, None].transpose(2, 0, 1)
 
 
