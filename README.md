@@ -23,5 +23,10 @@ Support MLP / Conv Policy.
 
 ## Basic Usage
 ```python
-    python run.py --batch_size=512 --rllr=1e-3 --env=HalfCheetah-v1
+    # By default use PPO
+    python run.py --batch_size=64 --rllr=1e-3 --env HalfCheetah-v1 --episodes 8 --shuffle --entropy_para = 0
 ```
+
+## Note
+
+For current TRPO  implementation, it's better to use seperate network for policy and value. Using share-parameter network would make training unstable.
